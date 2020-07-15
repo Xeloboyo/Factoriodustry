@@ -1,5 +1,5 @@
 # Pixel_Texturepack_Mindustry
-A texturepack for mindustry, currently in dev
+A texturepack for mindustry, <h2><b>currently in dev, there are missing blocks</b></h2>
 
 Access Trello:
 https://trello.com/invite/b/4OhnrdkU/26bae77d18289eeeefaa080ef7611dab/texturepack-todolist
