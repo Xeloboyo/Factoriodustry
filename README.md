@@ -1,4 +1,4 @@
-# Pixel_Texturepack_Mindustry
+# Pixel Texturepack Mindustry
 A texturepack for mindustry, <h2><b>currently in dev, there are missing blocks</b></h2>
 
 Access Trello:
