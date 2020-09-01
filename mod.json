@@ -2,7 +2,7 @@ name: xelos-pixel-texturepack
 displayName: Pixel TexturePack Mod
 author: Xelo
 description: Brings back some of that early mindustry charm, can be multiplayered with vanilla
-version: "0.3.2"
+version: "0.3.4"
 hidden: true
 minGameVersion: "104.0"
 dependencies: [ ]
