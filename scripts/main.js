@@ -25,5 +25,8 @@ cons(e => {
 	changeAtlas("phase-wall-large");
 	changeAtlas("scrap-wall");
 	changeAtlas("scrap-wall-large");
+	
+	Blocks.sporeMoss.blendGroup = Blocks.moss;
+	
 })
 )
