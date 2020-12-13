@@ -1,26 +1,60 @@
 
 
+function deepCopy(obj) {
+	var clone = {};
+	for (var i in obj) {
+		if (Array.isArray(obj[i])) {
+			clone[i] = [];
+			for (var z in obj[i]) {
+				if (typeof(obj[i][z]) == "object" && obj[i][z] != null) {
+					clone[i][z] = deepCopy(obj[i][z]);
+				} else {
+					clone[i][z] = obj[i][z];
+				}
+			}
+		} else if (typeof(obj[i]) == "object" && obj[i] != null)
+			clone[i] = deepCopy(obj[i]);
+		else
+			clone[i] = obj[i];
+	}
+	return clone;
+}
 
-
-
+function replaceAtlas(name,region){
+	var editoricon2 = Core.atlas.find(name);
+	editoricon2.u=region.u;
+	editoricon2.v=region.v;
+	editoricon2.u2=region.u2;
+	editoricon2.v2=region.v2;
+	editoricon2.texture = region.texture;
+}
 function changeAtlas(name){
-	print("Changing"+name);
 	var editoricon2 = Core.atlas.find("block-"+name + "-medium");
 	var newicon = Core.atlas.find("xelos-pixel-texturepack-"+name+"-icon");
 	editoricon2.set(newicon.u, newicon.v, newicon.u2, newicon.v2);
 	editoricon2.texture = newicon.texture;
 }
-function changeAtlasToSprite(name,region){
-	print("Changing"+name);
-	var editoricon2 = Core.atlas.find("block-"+name + "-medium");
-	var placeicon = Core.atlas.find("block-"+name + "-full");
-	var newicon = region;
-	editoricon2.set(newicon.u, newicon.v, newicon.u2, newicon.v2);
-	editoricon2.texture = newicon.texture;
-	placeicon.set(newicon.u, newicon.v, newicon.u2, newicon.v2);
-	placeicon.texture = newicon.texture;
+function changeAtlasToSprite(type,name,region){
+	replaceAtlas(type+"-"+name + "-medium",region);
+	replaceAtlas(type+"-"+name + "-xlarge",region);
+	replaceAtlas(type+"-"+name + "-large",region);
+	replaceAtlas(type+"-"+name + "-full",region);
+	replaceAtlas(type+"-"+name + "-small",region);
+	replaceAtlas(type+"-"+name + "-tiny",region);
 }
 
+
+function getHeatColor(heatcolor, a){
+	if(a<0.01){
+		return new Color(Color.clear);
+	}
+	let fcol = new Color(heatcolor.r,heatcolor.g,heatcolor.b,a);
+	if(a>1){
+		fcol.add(0,0,0.01*a);
+		fcol.mul(a);
+	}
+	return fcol;
+}
 
 function getRegion(region, tile,sheetw,sheeth) {
     if (!region) {
@@ -44,23 +78,29 @@ function getRegion(region, tile,sheetw,sheeth) {
 
 Events.on(EventType.ClientLoadEvent, 
 cons(e => {
-	changeAtlas("thorium-wall");
-	changeAtlas("thorium-wall-large");
-	changeAtlas("copper-wall");
-	changeAtlas("copper-wall-large");
-	changeAtlas("titanium-wall");
-	changeAtlas("titanium-wall-large");
-	changeAtlas("plastanium-wall");
-	changeAtlas("plastanium-wall-large");
-	changeAtlas("phase-wall");
-	changeAtlas("phase-wall-large");
-	changeAtlas("scrap-wall");
-	changeAtlas("scrap-wall-large");
+	
+	Vars.content.getBy(ContentType.item).each(item=>{
+		changeAtlasToSprite("item",item.name,item.icon(Cicon.medium));
+	});
+	
+	Vars.content.getBy(ContentType.block).each(block=>{
+		if(!(block instanceof BaseTurret) &&
+		    !(block instanceof Conveyor) &&
+			!(block instanceof PayloadConveyor) &&
+			!(block instanceof LiquidBlock) &&
+			!(block instanceof UnitFactory) &&
+			!(block instanceof RepairPoint) &&
+			!(block instanceof MassDriver) &&
+			!(block instanceof Floor) &&
+			!(block instanceof Drill) &&
+			!(block instanceof Cultivator)){
+			changeAtlasToSprite("block",block.name,Core.atlas.find(block.name));
+		}
+	});
 	
 	Blocks.sporeMoss.blendGroup = Blocks.moss;
 	
 	Blocks.siliconSmelter.buildType = () => {
-		
 		return extendContent(GenericSmelter.SmelterBuild,Blocks.siliconSmelter,{
 			topreg:null,
 			botreg:null,
@@ -75,11 +115,9 @@ cons(e => {
 				if(this.warmup > 0 && this.block.flameColor.a > 0.001){
 					var g = 0.3;
 					var r = 0.06;
-					var cr = Mathf.random(0.1);
-					
-					Draw.alpha(((1 - g) + Mathf.absin(Time.time, 8, g) + Mathf.random(r) - r) * this.warmup);
-
-					Draw.tint(Pal.turretHeat);
+					var cr = Mathf.random(0.1);	    
+					var a = (((1 - g) + Mathf.absin(Time.time, 8, g) + Mathf.random(r) - r) * this.warmup);
+					Draw.color(getHeatColor(Pal.turretHeat,a*2));
 					Draw.rect(this.heatreg,this.x, this.y);
 					Draw.color();
 				}
@@ -97,9 +135,6 @@ cons(e => {
 					}
 				}
 				Draw.rect(this.topreg, this.x, this.y);
-				
-				
-				
 			},
 			loadreg(){
 				let alt = Core.atlas.find("xelos-pixel-texturepack-silicon-smelter");
@@ -112,9 +147,71 @@ cons(e => {
 			}
 		});
 	};
-	changeAtlasToSprite("silicon-smelter",Blocks.siliconSmelter.region);
+	changeAtlasToSprite("block","silicon-smelter",Blocks.siliconSmelter.region);
 	
 	
+	const storageB= {
+		topreg:null,
+		botreg:null,
+		randpos:[],
+		shuffle:[],
+		draw(){
+			if(!this.topreg){
+				this.loadreg();
+			}
+			Draw.rect(this.botreg, this.x, this.y);
+			let total = this.items.total();
+			if(total>0){
+				let unique = this.items.sum((item,am)=>{
+					return 1;
+				});
+				let spaces = Mathf.clamp( Math.max(unique,Math.ceil(total*0.1))-unique,0,this.block.size*10);
+				let iiar = [];
+				let rind = 0;
+				this.items.each((item,am)=>{
+					let occupy = Math.max(0,spaces*((am-10)/total));
+					for(var ii = 0;ii<1+occupy;ii++){
+						iiar[rind] = item;
+						rind++;
+					}
+					spaces-=occupy;
+					total-=am;
+				});
+				
+				for(var tr = 0;tr<this.shuffle.length;tr++){
+					if(iiar[this.shuffle[tr]]){
+						Draw.rect(iiar[this.shuffle[tr]].icon(Cicon.medium), this.x+this.randpos[tr].x, this.y+this.randpos[tr].y, 5,5);
+					}
+				}
+			}
+			Draw.rect(this.topreg, this.x, this.y);
+		},
+		loadreg(){
+			let alt = Core.atlas.find("xelos-pixel-texturepack-"+this.block.name);
+			this.topreg = getRegion(alt,0,2,1);
+			this.botreg = getRegion(alt,1,2,1);
+			let s = this.block.size;
+			for(var i = 0;i<=30+s*10;i++){
+				this.randpos[i] = {x: Mathf.random(-s*2,s*2),y: Mathf.random(-s*2,s*2)};
+			}
+			let avail = [];
+			for(var i = 0;i<s*10;i++){
+				avail[i] = i;
+			}
+			for(var i = 0;i<s*10;i++){
+				var rpos = Math.floor(Math.random(0,avail.length));
+				this.shuffle[i]=avail[rpos];
+				avail.splice(rpos,1);
+			}
+		}
+	};
+	
+	Blocks.container.buildType = () =>{
+		return extendContent(StorageBlock.StorageBuild, Blocks.container,deepCopy(storageB));
+	}
+	Blocks.vault.buildType = () =>{
+		return extendContent(StorageBlock.StorageBuild, Blocks.vault,deepCopy(storageB));
+	}
 	
 })
 )
