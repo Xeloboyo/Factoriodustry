@@ -39,8 +39,8 @@ void main(){
     vec3 normal =  normalize(vec3(o1.x, o1.y, -1.0));
 	
 	vec3 refl = reflect(cam,normal);
-	color += hm*vec3(pow(max(0.0 , -dot(refl,light)),700))* (0.8*color+vec3(0.2));
-	color += hm*sky*(pow(max(0.0 , -dot(refl,light)),10))*0.1;
+	color += hm*vec3(pow(max(0.0 , -dot(refl,light)),700.0))* (0.8*color+vec3(0.2));
+	color += hm*sky*(pow(max(0.0 , -dot(refl,light)),10.0))*0.1;
 	color += hm*sky*0.5*(length(o1)*0.8+0.2);
 	gl_FragColor = vec4(color.rgb, 1.0);
 }
