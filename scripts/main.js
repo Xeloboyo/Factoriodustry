@@ -234,11 +234,29 @@ const bridgeB={
 	}
 }
 
-
+var testshader;
 
 Events.on(EventType.ClientLoadEvent, 
 cons(e => {
-	
+	testshader = new Shader(readString("shaders/screenspace.vert"), readString("shaders/water.frag"));
+	//this has got to be the stupidest way to replace a shader.
+	Shaders.water = extend(Shaders.SurfaceShader, "slag", {
+		setVertexAttribute(name, size, type, normalize, stride, buffer) {
+			testshader.setVertexAttribute(name, size, type, normalize, stride, buffer);
+		},
+		fetchUniformLocation(name, pedantic) {
+			return testshader.fetchUniformLocation(name,pedantic);
+		},
+		bind(){
+			testshader.bind();
+		},
+		hasUniform(name) {
+			return testshader.hasUniform(name);
+		}
+		/*setUniformf(a,b) {
+			testshader.setUniformf(a,b);
+		}*/
+	});
 	Vars.content.getBy(ContentType.item).each(item=>{
 		changeAtlasToSprite("item",item.name,item.icon(Cicon.medium));
 	});
