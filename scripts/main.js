@@ -188,6 +188,7 @@ const bridgeB={
 				this.onTake=s;
 			}
 		});
+		this.cap=6;
 		if(this.block.bufferCapacity){
 			this.cap=this.block.bufferCapacity;
 		}
@@ -218,9 +219,9 @@ const bridgeB={
 		
 		let ex = other.worldx() - this.x;
         let ey = other.worldy() - this.y;
-		let ttime = this.block.transportTime*2;
+		let ttime = this.block.transportTime*10;
 		if(this.block.bufferCapacity){
-			ttime = this.block.transportTime+ 3600/this.block.speed;
+			ttime = this.block.transportTime*10+ 3600/this.block.speed;
 		}
 		for(var m = 0;m<this.itemmove.length;m++){
 			if(this.itemmove[m] && this.itemmove[m].item && this.itemmove[m].t+ttime>Time.time){
@@ -298,6 +299,44 @@ cons(e => {
 		});
 	};
 	changeAtlasToSprite("block","silicon-smelter",Blocks.siliconSmelter.region);
+	
+	Blocks.forceProjector.buildType = () =>{
+		return extendContent(ForceProjector.ForceBuild, Blocks.forceProjector,{
+			draw(){
+				if(!fancy){
+					this.super$draw();
+					return;
+				}
+				Draw.rect(this.block.region, this.x, this.y);
+				let hp = 1.0-(this.buildup / this.block.shieldHealth);
+				
+				if(this.liquids.total() > 0.001){
+					Drawf.liquid(this.block.topRegion, this.x, this.y, this.liquids.total() / this.block.liquidCapacity, this.liquids.current().color);
+				}
+				
+				if(hp>0){
+					let bottomlerp = Mathf.clamp(hp*2);
+					let toplerp = Mathf.clamp(hp*2-1);
+					const size = 3.2;
+					
+					Draw.blend(Blending.additive);
+					Draw.color(this.team.color,this.efficiency())
+					Lines.stroke(0.8);
+					
+					Lines.line(this.x,this.y-size , this.x + bottomlerp*size, this.y-size + (bottomlerp*size));
+					Lines.line(this.x,this.y-size , this.x - bottomlerp*size, this.y-size + (bottomlerp*size));
+					
+					Lines.line(this.x+size,this.y , this.x+size - (toplerp*size), this.y + (toplerp*size));
+					Lines.line(this.x-size,this.y , this.x-size + (toplerp*size), this.y + (toplerp*size));
+					
+					Draw.blend();
+					Draw.reset();
+				}
+				
+			}
+			
+		});
+	}
 
 	
 	Blocks.container.buildType = () =>{
