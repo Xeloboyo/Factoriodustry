@@ -104,6 +104,120 @@ function drawItemClusterInventory(x,y,item,items,randpos,startp){
 	drawItemCluster(x,y,item,items.get(item),randpos,startp);
 }
 
+function initShader(){
+	water = new Shader(readString("shaders/screenspace.vert"), readString("shaders/water.frag"));
+	slag = new Shader(readString("shaders/screenspace.vert"), readString("shaders/slag.frag"));
+	//if(true){
+	//	Shaders.water = new Shaders.SurfaceShader(readString("shaders/screenspace.vert"), readString("shaders/water.frag"));
+	//	Shaders.slag = new Shaders.SurfaceShader(readString("shaders/screenspace.vert"), readString("shaders/slag.frag"));
+	//}else{
+		
+		Shaders.water = extend(Shaders.SurfaceShader, "water", {
+			setVertexAttribute(name, size, type, normalize, stride, buffer) {
+				water.setVertexAttribute(name, size, type, normalize, stride, buffer);
+			},
+			enableVertexAttribute(location){
+				water.enableVertexAttribute(location);
+			},
+			disableVertexAttribute(name){
+				water.disableVertexAttribute(name);
+			},
+			fetchUniformLocation(name, pedantic) {
+				return water.fetchUniformLocation(name,pedantic);
+			},
+			getAttributeLocation(name){
+				return water.getAttributeLocation(name);
+			},
+			getAttributes(){
+				return water.getAttributes();
+			},
+			getUniforms(){
+				return water.getUniforms();
+			},
+			getAttributeSize(name){
+				return water.getAttributeSize(name);
+			},
+			bind(){
+				water.bind();
+			},
+			hasUniform(name) {
+				return water.hasUniform(name);
+			},
+			getUniformType(name) {
+				return water.getUniformType(name);
+			},
+			getUniformLocation(name) {
+				return water.getUniformLocation(name);
+			},
+			getUniformSize(name) {
+				return water.getUniformSize(name);
+			},
+			dispose() {
+				water.dispose();
+				this.super$dispose();
+			},
+			apply(){
+				flyingbuffer.getTexture().bind(2);
+				this.super$apply();
+				this.setUniformi("u_flying", 2);
+			},
+			isDisposed() {
+				return water.isDisposed();
+			}
+		});
+	
+		Shaders.slag = extend(Shaders.SurfaceShader, "slag",{
+			setVertexAttribute(name, size, type, normalize, stride, buffer) {
+				slag.setVertexAttribute(name, size, type, normalize, stride, buffer);
+			},
+			enableVertexAttribute(location){
+				slag.enableVertexAttribute(location);
+			},
+			disableVertexAttribute(name){
+				slag.disableVertexAttribute(name);
+			},
+			fetchUniformLocation(name, pedantic) {
+				return slag.fetchUniformLocation(name,pedantic);
+			},
+			getAttributeLocation(name){
+				return slag.getAttributeLocation(name);
+			},
+			getAttributes(){
+				return slag.getAttributes();
+			},
+			getUniforms(){
+				return slag.getUniforms();
+			},
+			getAttributeSize(name){
+				return slag.getAttributeSize(name);
+			},
+			bind(){
+				slag.bind();
+			},
+			hasUniform(name) {
+				return slag.hasUniform(name);
+			},
+			getUniformType(name) {
+				return slag.getUniformType(name);
+			},
+			getUniformLocation(name) {
+				return slag.getUniformLocation(name);
+			},
+			getUniformSize(name) {
+				return slag.getUniformSize(name);
+			},
+			dispose() {
+				slag.dispose();
+				this.super$dispose();
+			},
+			isDisposed() {
+				return slag.isDisposed();
+			}
+		});//*/
+	//}
+	
+}
+
 var fancy = true;
 
 const storageB= {
@@ -234,29 +348,30 @@ const bridgeB={
 	}
 }
 
-var testshader;
-
+var water;
+var slag;
+var flyingbuffer;
+Events.run(Trigger.draw, () => {
+	Draw.draw(Layer.flyingUnitLow-0.01, run(()=>{
+		flyingbuffer.resize(Core.graphics.width, Core.graphics.height);
+		flyingbuffer.begin(Color.clear);
+	}));
+	Draw.draw(Layer.flyingUnit+0.01, run(()=>{
+		flyingbuffer.end();
+		flyingbuffer.blit(Shaders.screenspace);
+	}));
+	Draw.draw(Layer.block+0.1, run(()=>{
+		flyingbuffer.end();
+	}));
+	Draw.z(Layer.block+0.1);
+	Fill.rect(0,0,1,1);
+});
 Events.on(EventType.ClientLoadEvent, 
 cons(e => {
-	testshader = new Shader(readString("shaders/screenspace.vert"), readString("shaders/water.frag"));
-	//this has got to be the stupidest way to replace a shader.
-	Shaders.water = extend(Shaders.SurfaceShader, "slag", {
-		setVertexAttribute(name, size, type, normalize, stride, buffer) {
-			testshader.setVertexAttribute(name, size, type, normalize, stride, buffer);
-		},
-		fetchUniformLocation(name, pedantic) {
-			return testshader.fetchUniformLocation(name,pedantic);
-		},
-		bind(){
-			testshader.bind();
-		},
-		hasUniform(name) {
-			return testshader.hasUniform(name);
-		}
-		/*setUniformf(a,b) {
-			testshader.setUniformf(a,b);
-		}*/
-	});
+	flyingbuffer = new FrameBuffer(Core.graphics.width, Core.graphics.height);
+	
+	initShader();
+
 	Vars.content.getBy(ContentType.item).each(item=>{
 		changeAtlasToSprite("item",item.name,item.icon(Cicon.medium));
 	});
@@ -271,9 +386,13 @@ cons(e => {
 			!(block instanceof MassDriver) &&
 			!(block instanceof Floor) &&
 			!(block instanceof Drill) &&
+			!(block instanceof LiquidConverter) &&
 			!(block instanceof Cultivator)){
 			changeAtlasToSprite("block",block.name,Core.atlas.find(block.name));
 		}
+	});
+	Vars.content.getBy(ContentType.unit).each(unit=>{
+		changeAtlasToSprite("unit",unit.name,Core.atlas.find(unit.name));
 	});
 	
 	Blocks.sporeMoss.blendGroup = Blocks.moss;
@@ -410,7 +529,7 @@ if(!Vars.headless){
 				}),
 				Styles.logict,
 				() => { fancy = !fancy;  rebuild.run(); }
-			);
+			);	
 		});
 		let rebuild = run(() => tblcons.get(ut2));
 		rebuild.run();
