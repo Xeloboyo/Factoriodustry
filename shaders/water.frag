@@ -41,7 +41,7 @@ void main(){
 	
 	vec3 refl = reflect(cam,normal);
 	
-	vec4 fly = texture2D(u_flying, c+refl*v*30.0);
+	vec4 fly = texture2D(u_flying, c+refl.xy*v*30.0);
 	
 	vec3 lightcol = vec3(pow(max(0.0 , -dot(refl,light)),700.0))* (0.8*color+vec3(0.2));
 	lightcol += sky*(pow(max(0.0 , -dot(refl,light)),10.0))*0.1;

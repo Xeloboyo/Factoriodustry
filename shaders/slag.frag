@@ -52,8 +52,8 @@ void main(){
 	col += vec3(pow(max(0.0 , -dot(refl,light)),700.0))*(1.0-liq)*0.4;
 	
 	
-	col += vec3(0.4,0.05,0.0) * max(0.0, 1.0-length(uv - vec2(0.5)));
-	col = mix(col,vec3(0.7),0.15);
+	col += vec3(0.4,0.05,0.0) * max(0.0, 1.0- length(uv - vec2(0.5)));
+	col = mix(col,vec3(0.7),0.15); 
     gl_FragColor = vec4(col,texture2D(u_texture,uv).a);
 
 }
