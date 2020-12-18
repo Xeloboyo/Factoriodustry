@@ -5,6 +5,6 @@
   "description": "Brings back some of that early mindustry charm, can be multiplayered with vanilla\nContributors: VozDuh",
   "version": "0.4.1",
   "hidden": true,
-  "minGameVersion": "120",
+  "minGameVersion": "105",
   "dependencies": []
 }
