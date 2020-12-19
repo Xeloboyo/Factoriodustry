@@ -12,7 +12,8 @@ uniform float u_time;
 
 varying vec2 v_texCoords;
 
-uniform vec2 mscl = vec2(300.0,60.0);
+uniform float tscal;
+uniform vec2 mscl;
 const vec3 sky = vec3(0.7,0.7,0.7);
 
 float ridge(float x){
@@ -21,8 +22,8 @@ float ridge(float x){
 
 
 void main(){
-	float stime = u_time / 5.0;
-	float btime = u_time / 1500.0;
+	float stime = tscal* u_time / 5.0;
+	float btime = tscal* u_time / 1500.0;
 	vec2 c = v_texCoords;
 
 	vec2 v = vec2(1.0/u_resolution.x, 1.0/u_resolution.y);
