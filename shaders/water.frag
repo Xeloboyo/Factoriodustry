@@ -34,7 +34,7 @@ void main(){
 	
 	vec4 fcolor = texture2D(u_texture, wavecord);
     vec3 color = fcolor.rgb *0.7;
-	float hm = texture2D(u_texture, wavecord+vec2(0.0,5.0)*v).a;
+	float hm = min(1.0,texture2D(u_texture, wavecord+vec2(0.0,5.0)*v).a*2.0);
 	vec2 o1 = 0.17*vec2(ridge(texture2D(u_noise,coords/mscl + vec2(btime)).r), ridge(texture2D(u_noise,coords/mscl + vec2(btime*vec2(-1,1))).r));
 		
 	vec3 cam = normalize(vec3((c.x - 0.5)*(u_resolution.x/u_resolution.y),c.y, 1.0));
@@ -51,5 +51,5 @@ void main(){
 	
 	color += hm*lightcol*(1.0-fly.a) + (fly.a*fly.rgb * 0.2);
 	color*=(1.0-fly.a*0.2);
-	gl_FragColor = vec4(color.rgb, fcolor.a);
+	gl_FragColor = vec4(color.rgb, min(1.0,fcolor.a*6.0));
 }

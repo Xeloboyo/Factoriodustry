@@ -176,6 +176,16 @@ function initShader(){
 			this.super$apply();
 			this.setUniformi("u_flying", 2);
 			this.setUniformf("mscl",new Vec2(300.0,200.0));
+			this.setUniformf("tscal",0.2);
+		}}
+	);
+	Shaders.mud = extendShader("water", {
+		apply(){
+			flyingbuffer.getTexture().bind(2);
+			this.super$apply();
+			this.setUniformi("u_flying", 2);
+			this.setUniformf("mscl",new Vec2(300.0,200.0));
+			this.setUniformf("tscal",0.02);
 		}}
 	);
 	Shaders.slag = extendShader("slag", {});
