@@ -535,6 +535,9 @@ if(!Vars.headless){
 		let rebuild = run(() => tblcons.get(ut2));
 		rebuild.run();
 		ut.add(ut2);
+		if(Vars.mobile){
+			ut.marginBottom(105);
+		}
 		Vars.ui.hudGroup.addChild(ut);
 	});
 }
