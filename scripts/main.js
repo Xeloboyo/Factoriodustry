@@ -231,7 +231,7 @@ const storageB= {
 	randpos:[],
 	shuffle:[],
 	draw(){	
-		if(!fancy){
+		if(!Core.settings.getBool("seethrough")){
 			this.super$draw();
 			return;
 		}
@@ -321,7 +321,7 @@ const bridgeB={
 	},
 	draw(){
 		this.super$draw();
-		if(!fancy){
+		if(!Core.settings.getBool("seethrough")){
 			return;
 		}
 		Draw.z(Layer.power);
@@ -369,6 +369,10 @@ Events.run(Trigger.draw, () => {
 });
 Events.on(EventType.ClientLoadEvent, 
 cons(e => {
+	
+	Vars.ui.settings.graphics.checkPref("seethrough", Core.settings.getBool("seethrough"));
+	Core.settings.defaults("seethrough", true);
+	
 	flyingbuffer = new FrameBuffer(Core.graphics.width, Core.graphics.height);
 	
 	initShader();
@@ -419,7 +423,7 @@ cons(e => {
 					Draw.rect(this.heatreg,this.x, this.y);
 					Draw.color();
 				}
-				if(fancy){
+				if(Core.settings.getBool("seethrough")){
 					drawItemClusterInventory(this.x  ,this.y,Items.coal,this.items,this.randpos,0);
 					drawItemClusterInventory(this.x+8,this.y,Items.sand,this.items,this.randpos,10);
 				}
@@ -441,7 +445,7 @@ cons(e => {
 	Blocks.forceProjector.buildType = () =>{
 		return extendContent(ForceProjector.ForceBuild, Blocks.forceProjector,{
 			draw(){
-				if(!fancy){
+				if(!Core.settings.getBool("seethrough")){
 					this.super$draw();
 					return;
 				}
@@ -508,7 +512,7 @@ function addConsButton(table, consFunc, style, runnable) {
 if(!Vars.headless){
 	var ut = new Table();
 
-	Events.on(ClientLoadEvent, () => {
+	/*Events.on(ClientLoadEvent, () => {
 		var ut2 = new Table();
 		ut.bottom().left();
 		ut2.background(Styles.black5);
@@ -522,9 +526,9 @@ if(!Vars.headless){
 					butt.margin(12);
 					butt.defaults().left().top();
 					if(fancy){
-						butt.add("[#aaffaa]Fancy:ON").size(170, 45); //name
+						butt.add("[#aaffaa]Fancy:ON").size(170, 45); 
 					}else{
-						butt.add("[#ffaaaa]Fancy:OFF").size(170, 45); //name
+						butt.add("[#ffaaaa]Fancy:OFF").size(170, 45); 
 					}
 
 				}),
@@ -539,5 +543,5 @@ if(!Vars.headless){
 			ut.marginBottom(105);
 		}
 		Vars.ui.hudGroup.addChild(ut);
-	});
+	});*/
 }
