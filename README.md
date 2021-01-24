@@ -12,4 +12,4 @@ https://github.com/Xeloboyo/FactoriodustryPlus
 <a href="https://ibb.co/nzDcpCY"><img src="https://i.ibb.co/J5z7ZQG/image.png" alt="image" border="0"></a>
 <a href="https://ibb.co/TWB45Pc"><img src="https://i.ibb.co/g4MSCty/image.png" alt="image" border="0"></a>\
 
-Credit to Vozduh for some of the of the unit sprites <3
+Credit to Vozduh for some of the of the sprites <3
