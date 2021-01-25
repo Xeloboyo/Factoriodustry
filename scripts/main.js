@@ -397,7 +397,7 @@ cons(e => {
 		}
 	});
 	Vars.content.getBy(ContentType.unit).each(unit=>{
-		changeAtlasToSprite("unit",unit.name,Core.atlas.find(unit.name));
+		changeAtlasToSprite("unit",unit.name + "-outline",Core.atlas.find(unit.name) + "-outline");
 	});
 	
 	Blocks.sporeMoss.blendGroup = Blocks.moss;
