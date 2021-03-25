@@ -38,12 +38,12 @@ function deepCopy(obj) {
 }
 
 function replaceAtlas(name,region){
-	var editoricon2 = Core.atlas.find(name);
-	editoricon2.u=region.u;
-	editoricon2.v=region.v;
-	editoricon2.u2=region.u2;
-	editoricon2.v2=region.v2;
-	editoricon2.texture = region.texture;
+// 	var editoricon2 = Core.atlas.find(name);
+// 	editoricon2.u=region.u;
+// 	editoricon2.v=region.v;
+// 	editoricon2.u2=region.u2;
+// 	editoricon2.v2=region.v2;
+// 	editoricon2.texture = region.texture;
 }
 function changeAtlas(name){
 	var editoricon2 = Core.atlas.find("block-"+name + "-medium");
@@ -397,7 +397,7 @@ cons(e => {
 		}
 	});
 	Vars.content.getBy(ContentType.unit).each(unit=>{
-		changeAtlasToSprite("unit",unit.name,Core.atlas.find(unit.name));
+		changeAtlasToSprite("unit",unit.name + "-outline",Core.atlas.find(unit.name) + "-outline");
 	});
 	
 	Blocks.sporeMoss.blendGroup = Blocks.moss;
