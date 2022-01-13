@@ -60,6 +60,16 @@ function changeAtlasToSprite(type,name,region){
 	replaceAtlas(type+"-"+name + "-tiny",region);
 }
 
+function directAtlasReplace(region, replacement){
+	if(replacement.name=="error" || !replacement || !region){
+		return;
+	}
+	region.texture.getTextureData().pixmap.draw(replacement.texture.getTextureData().pixmap, 
+					region.u * region.texture.width, 
+					region.v * region.texture.height, 
+					replacement.u*replacement.texture.width, replacement.v*replacement.texture.height, replacement.width, replacement.height);
+}
+
 
 function getHeatColor(heatcolor, a){
 	if(a<0.01){
@@ -157,9 +167,19 @@ function extendShader(shadername, ext){
 				return shad.isDisposed();
 			}
 		},ext));
-	
-	
 }
+function addShader(shader, name){
+	Shaders[name] = shader;
+	let original = CacheLayer[name];
+	for(let i = 0;i<CacheLayer.all.length;i++){
+		if(CacheLayer.all[i] == original){
+			CacheLayer[name] = new CacheLayer.ShaderLayer(shader);
+			CacheLayer.all[i] = CacheLayer[name];
+			CacheLayer.all[i].id = i;
+		}
+	}
+}
+
 function initShader(){
 	Shaders.water = extendShader("water", {
 		apply(){
@@ -170,6 +190,8 @@ function initShader(){
 			this.setUniformf("tscal",1.0);
 		}}
 	);
+	addShader(Shaders.water,"water");
+	
 	Shaders.tar = extendShader("tar", {
 		apply(){
 			flyingbuffer.getTexture().bind(2);
@@ -179,6 +201,8 @@ function initShader(){
 			this.setUniformf("tscal",0.2);
 		}}
 	);
+	addShader(Shaders.tar,"tar");
+	
 	Shaders.mud = extendShader("mud", {
 		apply(){
 			flyingbuffer.getTexture().bind(2);
@@ -188,8 +212,10 @@ function initShader(){
 			this.setUniformf("tscal",0.02);
 		}}
 	);
-	Shaders.slag = extendShader("slag", {});
+	addShader(Shaders.mud,"mud");
 	
+	Shaders.slag = extendShader("slag", {});
+	addShader(Shaders.slag,"slag");
 
 	
 		/*Shaders.water = extend(Shaders.SurfaceShader,readString("shaders/screenspace.vert"), readString("shaders/water.frag"),{
@@ -209,14 +235,6 @@ function initShader(){
 			}
 		});
 		Shaders.slag = new Shaders.SurfaceShader(readString("shaders/screenspace.vert"), readString("shaders/slag.frag"));
-		
-		set a1 "set a1 "
-		set q "\\""
-		print a1
-		print q
-		print a1
-		print q
-		printflush message1
 		*/
 	
 	
@@ -365,21 +383,32 @@ Events.run(Trigger.draw, () => {
 		flyingbuffer.end();
 		flyingbuffer.blit(Shaders.screenspace);
 	}));
-
 });
+
+Events.on(EventType.ContentInitEvent, 
+cons(e => {
+	Log.info("Content init")
+	//initShader();
+}));
+
 Events.on(EventType.ClientLoadEvent, 
 cons(e => {
-	
+	Log.info("Client load")
 	Vars.ui.settings.graphics.checkPref("seethrough", Core.settings.getBool("seethrough"));
 	Core.settings.defaults("seethrough", true);
 	
 	flyingbuffer = new FrameBuffer(Core.graphics.width, Core.graphics.height);
-	
 	initShader();
+	
 
 	Vars.content.getBy(ContentType.item).each(item=>{
 		changeAtlasToSprite("item",item.name,item.icon(Cicon.medium));
 	});
+	
+	var envrionment = Core.atlas.find("grass1").texture;
+	var envpixmap = envrionment.getTextureData().pixmap;
+	
+	
 	
 	Vars.content.getBy(ContentType.block).each(block=>{
 		if(!(block instanceof BaseTurret) &&
@@ -395,51 +424,82 @@ cons(e => {
 			!(block instanceof Cultivator)){
 			changeAtlasToSprite("block",block.name,Core.atlas.find(block.name));
 		}
+		
+		if(block instanceof Floor){
+			if(block.variants>0){
+				if(block.variantRegions){
+					for(let i = 0;i<block.variants;i++){
+						directAtlasReplace(block.variantRegions[i], Core.atlas.find("xelos-pixel-texturepack-"+block.name+(i+1)));
+					}
+				}
+			}else{
+				directAtlasReplace(block.variantRegions[0], Core.atlas.find("xelos-pixel-texturepack-"+block.name));
+			}
+			directAtlasReplace(Core.atlas.find(block.name+"-edge"), Core.atlas.find("xelos-pixel-texturepack-"+block.name + "-edge"));
+		}
+		
+		if(block instanceof Prop){
+			if(block.variants>0){
+				if(block.variantRegions){
+					for(let i = 0;i<block.variants;i++){
+						directAtlasReplace(block.variantRegions[i], Core.atlas.find("xelos-pixel-texturepack-"+block.name+(i+1)));
+					}
+				}
+			}else{
+				directAtlasReplace(block.region, Core.atlas.find("xelos-pixel-texturepack-"+block.name));
+			}
+			if(block instanceof StaticWall){
+				directAtlasReplace(block.large, Core.atlas.find("xelos-pixel-texturepack-"+block.name+"-large"));
+			}
+		}
 	});
+	envrionment.load(envrionment.getTextureData());
+	
 	Vars.content.getBy(ContentType.unit).each(unit=>{
 		changeAtlasToSprite("unit",unit.name + "-outline",Core.atlas.find(unit.name) + "-outline");
+		changeAtlasToSprite("unit",unit.name,Core.atlas.find(unit.name));
 	});
 	
 	Blocks.sporeMoss.blendGroup = Blocks.moss;
 	
-	Blocks.siliconSmelter.buildType = () => {
-		return extendContent(GenericSmelter.SmelterBuild,Blocks.siliconSmelter,{
-			topreg:null,
-			botreg:null,
-			heatreg:null,
-			randpos:[],
-			draw(){
-				if(!this.topreg){
-					this.loadreg();
-				}
-				Draw.rect(this.botreg, this.x, this.y);
-				
-				if(this.warmup > 0 && this.block.flameColor.a > 0.001){
-					var g = 0.3;
-					var r = 0.06;
-					var cr = Mathf.random(0.1);	    
-					var a = (((1 - g) + Mathf.absin(Time.time, 8, g) + Mathf.random(r) - r) * this.warmup);
-					Draw.color(getHeatColor(Pal.turretHeat,a*2));
-					Draw.rect(this.heatreg,this.x, this.y);
-					Draw.color();
-				}
-				if(Core.settings.getBool("seethrough")){
-					drawItemClusterInventory(this.x  ,this.y,Items.coal,this.items,this.randpos,0);
-					drawItemClusterInventory(this.x+8,this.y,Items.sand,this.items,this.randpos,10);
-				}
-				Draw.rect(this.topreg, this.x, this.y);
-			},
-			loadreg(){
-				let alt = Core.atlas.find("xelos-pixel-texturepack-silicon-smelter");
-				this.topreg = getRegion(alt,0,2,2);
-				this.botreg = getRegion(alt,1,2,2);
-				this.heatreg = getRegion(alt,2,2,2);
-				for(var i = 0;i<=20;i++){
-					this.randpos[i] = {x: Mathf.random(3,5)-8,y: Mathf.random(3,12)-8};
-				}
+	
+	Blocks.siliconSmelter.drawer = extend(DrawSmelter,{
+		topreg:null,
+		botreg:null,
+		heatreg:null,
+		randpos:[],
+		load(block){
+			let alt = Core.atlas.find("xelos-pixel-texturepack-silicon-smelter");
+			this.topreg = getRegion(alt,0,2,2);
+			this.botreg = getRegion(alt,1,2,2);
+			this.heatreg = getRegion(alt,2,2,2);
+			for(var i = 0;i<=20;i++){
+				this.randpos[i] = {x: Mathf.random(3,5)-8,y: Mathf.random(3,12)-8};
 			}
-		});
-	};
+		},
+		draw(build){
+			if(!this.topreg){
+				this.load(build.block);
+			}
+			Draw.rect(this.botreg, build.x, build.y);
+			
+			if(build.warmup > 0 && this.flameColor.a > 0.001){
+				var g = 0.3;
+				var r = 0.06;
+				var cr = Mathf.random(0.1);	    
+				var a = (((1 - g) + Mathf.absin(Time.time, 8, g) + Mathf.random(r) - r) * build.warmup);
+				Draw.color(getHeatColor(Pal.turretHeat,a*2));
+				Draw.rect(this.heatreg,build.x, build.y);
+				Draw.color();
+			}
+			if(Core.settings.getBool("seethrough")){
+				drawItemClusterInventory(build.x  ,build.y,Items.coal,build.items,this.randpos,0);
+				drawItemClusterInventory(build.x+8,build.y,Items.sand,build.items,this.randpos,10);
+			}
+			Draw.rect(this.topreg, build.x, build.y);
+		}
+	})
+	
 	changeAtlasToSprite("block","silicon-smelter",Blocks.siliconSmelter.region);
 	
 	Blocks.forceProjector.buildType = () =>{
@@ -474,7 +534,7 @@ cons(e => {
 					Draw.blend();
 					Draw.reset();
 				}
-				
+				this.drawShield();
 			}
 			
 		});
