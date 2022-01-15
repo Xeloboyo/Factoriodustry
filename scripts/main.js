@@ -38,12 +38,18 @@ function deepCopy(obj) {
 }
 
 function replaceAtlas(name,region){
-// 	var editoricon2 = Core.atlas.find(name);
-// 	editoricon2.u=region.u;
-// 	editoricon2.v=region.v;
-// 	editoricon2.u2=region.u2;
-// 	editoricon2.v2=region.v2;
-// 	editoricon2.texture = region.texture;
+	if(!region){
+		return;
+	}
+ 	var editoricon2 = Core.atlas.find(name);
+	if(!editoricon2){
+		return;
+	}
+ 	editoricon2.u=region.u;
+ 	editoricon2.v=region.v;
+ 	editoricon2.u2=region.u2;
+ 	editoricon2.v2=region.v2;
+ 	editoricon2.texture = region.texture;
 }
 function changeAtlas(name){
 	var editoricon2 = Core.atlas.find("block-"+name + "-medium");
@@ -52,12 +58,8 @@ function changeAtlas(name){
 	editoricon2.texture = newicon.texture;
 }
 function changeAtlasToSprite(type,name,region){
-	replaceAtlas(type+"-"+name + "-medium",region);
-	replaceAtlas(type+"-"+name + "-xlarge",region);
-	replaceAtlas(type+"-"+name + "-large",region);
 	replaceAtlas(type+"-"+name + "-full",region);
-	replaceAtlas(type+"-"+name + "-small",region);
-	replaceAtlas(type+"-"+name + "-tiny",region);
+	replaceAtlas(type+"-"+name + "-ui",region);
 }
 
 function directAtlasReplace(region, replacement){
@@ -68,6 +70,10 @@ function directAtlasReplace(region, replacement){
 					region.u * region.texture.width, 
 					region.v * region.texture.height, 
 					replacement.u*replacement.texture.width, replacement.v*replacement.texture.height, replacement.width, replacement.height);
+}
+function smoothCurve(x){
+	return x*x*(3-2*x);
+	
 }
 
 
@@ -103,10 +109,18 @@ function getRegion(region, tile,sheetw,sheeth) {
     return nregion;
 }
 
+function drawOrientedRect(tex,x,y,ox,oy,rotdeg,rot){
+	Draw.rect(tex,x + Mathf.cosDeg(rotdeg-90)*ox + Mathf.sinDeg(rotdeg-90)*oy,y + Mathf.sinDeg(rotdeg-90)*ox - Mathf.cosDeg(rotdeg-90)*oy,rot+rotdeg);
+}
+function createOrientedEffect(eff,x,y,ox,oy,rotdeg,rot){
+	eff.at(x + Mathf.cosDeg(rotdeg-90)*ox + Mathf.sinDeg(rotdeg-90)*oy,y + Mathf.sinDeg(rotdeg-90)*ox - Mathf.cosDeg(rotdeg-90)*oy,rot);
+}
+
 function drawItemCluster(x,y,item,am,randpos,startp){
 	if(am>0){
+		am = Math.min(am,100);
 		for(var i = 0;i<am;i++){
-			Draw.rect(item.icon(Cicon.medium), x+randpos[i+startp].x, y+randpos[i+startp].y, 5,5);
+			Draw.rect(item.icon(Cicon.medium), x+randpos[(i+startp)%randpos.length].x, y+randpos[(i+startp)%randpos.length].y, 5,5);
 		}
 	}
 }
@@ -216,28 +230,6 @@ function initShader(){
 	
 	Shaders.slag = extendShader("slag", {});
 	addShader(Shaders.slag,"slag");
-
-	
-		/*Shaders.water = extend(Shaders.SurfaceShader,readString("shaders/screenspace.vert"), readString("shaders/water.frag"),{
-			apply(){
-				flyingbuffer.getTexture().bind(2);
-				this.super$apply();
-				this.setUniformi("u_flying", 2);
-				this.setUniformf("mscl",new Vec2(300.0,60.0));
-			}
-		});
-		Shaders.tar = extend(Shaders.SurfaceShader,readString("shaders/screenspace.vert"), readString("shaders/tar.frag"),{
-			apply(){
-				//flyingbuffer.getTexture().bind(2);
-				this.super$apply();
-				//this.setUniformi("u_flying", 2);
-				this.setUniformf("mscl",new Vec2(300.0,60.0));
-			}
-		});
-		Shaders.slag = new Shaders.SurfaceShader(readString("shaders/screenspace.vert"), readString("shaders/slag.frag"));
-		*/
-	
-	
 	
 }
 
@@ -371,6 +363,320 @@ const bridgeB={
 	}
 }
 
+const type_point_welder = 0;
+const type_line_welder = 1;
+
+const mechArm = {
+	fromX:0,
+	fromY:0,
+	toX:0,
+	toY:0,
+	positions:[],
+	actions:[],
+	rotation: 0,
+	tx: 0,//headpos
+	ty: 0,
+	nx: 0,//normal
+	ny: 0,
+	lastEffect: 0,lastEffect2: 0,
+	type: type_point_welder,
+	restx: 0,resty: 0,
+	draw(bx,by,progress,rotdeg,spd){
+		this.lastEffect -= Time.delta;
+		this.lastEffect2 -= Time.delta;
+		if(this.positions.length>0 && progress < 1 && spd > 0.001){
+			for(let i = 0;i<this.positions.length;i++){
+				if(i+1 == this.positions.length || this.positions[i+1].t>progress){
+					switch(this.type){
+						case type_point_welder:
+							let dtx = (this.positions[i].x-this.tx);
+							let dty = (this.positions[i].y-this.ty);
+							this.tx += dtx*0.1*spd;
+							this.ty += dty*0.1*spd;
+							if(Math.abs(dtx)+Math.abs(dty)<1 && this.lastEffect<0){
+								createOrientedEffect(weldspark,bx,by,this.tx*Draw.scl,this.ty*Draw.scl,rotdeg,45+Mathf.range(7));
+								this.lastEffect = 5;
+							}
+							break;
+						case type_line_welder:
+							let next = this.positions[Math.min(i+1,this.positions.length-1)];
+							let curr = this.positions[i];
+							let l = (progress - curr.t) / (next.t - curr.t);
+							if(next==curr){
+								l = 0;
+							}
+							l = smoothCurve(l);
+							this.tx = Mathf.lerp(curr.x,next.x,l);
+							this.ty = Mathf.lerp(curr.y,next.y,l);
+							if(curr.a){
+								if(this.lastEffect<0){
+									createOrientedEffect(weldspark,bx,by,this.tx*Draw.scl,this.ty*Draw.scl,rotdeg,45+Mathf.range(7));
+									this.lastEffect = 5;
+								}
+								if(this.lastEffect2<0){
+									createOrientedEffect(weldglow,bx,by,this.tx*Draw.scl,this.ty*Draw.scl,rotdeg,0);
+									this.lastEffect2 = 1.5;
+								}
+							}
+							break;
+					}
+					break;
+				}
+			}
+		}else{
+			this.tx += (this.restx -this.tx)*0.2;
+			this.ty += (this.resty -this.ty)*0.2;
+		}
+		let dx = this.toX-this.fromX; let dy = this.toY - this.fromY;
+		let slidepos = ((this.tx-this.fromX)*dx + (this.ty-this.fromY)*dy)/(dx*dx+dy*dy);
+		
+		let x = Mathf.lerp(this.fromX,this.toX,slidepos);
+		let y = Mathf.lerp(this.fromY,this.toY,slidepos);
+		let dis = Mathf.dst(x,y,this.tx,this.ty);
+		for(let i = 0;i<dis-16;i+=32){
+			drawOrientedRect(armconn,bx,by,(this.tx-this.nx*(i+16))*Draw.scl,(this.ty-this.ny*(i+16))*Draw.scl,rotdeg,this.rotation);
+		}
+		drawOrientedRect(armhead,bx,by,this.tx*Draw.scl,this.ty*Draw.scl,rotdeg,this.rotation);//
+		drawOrientedRect(armbase,bx,by,x*Draw.scl,y*Draw.scl,rotdeg,this.rotation);//
+	},
+	
+	resetRail(x,y,x2,y2){
+		this.fromX = x;
+		this.toX = x2;
+		this.fromY = y;
+		this.toY = y2;
+		this.rotation = 270-Angles.angle(x,y,x2,y2);
+		let d = Mathf.dst(x,y,x2,y2);
+		this.nx = (y-y2)/d;
+		this.ny = -(x-x2)/d;
+		this.restx = (this.fromX + this.nx*8);
+		this.resty = (this.fromY + this.ny*8);
+	},
+	//oriented from a building facing down
+	newArm(x,y,x2,y2){
+		let arm = Object.create(mechArm);
+		arm.resetRail(x,y,x2,y2);
+		return arm;
+	}
+}
+var armbase=null;
+var armhead=null;
+var armconn=null;
+var weldspark = null;
+var weldglow = null;
+const unitFacB = {
+	arms: [],
+	pieces: [],
+	gw:0,gh:0,cw:0,ch:0,usprite:null,
+	getUnitSprite(){
+		if(this.currentPlan != -1){
+			return this.block.plans.get(this.currentPlan).unit.fullIcon;
+		}
+		return Core.atlas.find("error");
+	},
+	isWorking(){
+		return this.currentPlan != -1;
+	},
+	getProgress(){
+		if(this.currentPlan != -1){
+			return Math.min(1,this.progress / this.block.plans.get(this.currentPlan).time);
+		}
+		return 1;
+	},
+	drawBelow(){
+		
+	},
+	draw(){	
+		if(this.arms.length == 0){
+			this.setupArms();
+		}
+		let x = this.x;
+		let y = this.y;
+		let rotdeg = this.rotdeg();
+		Draw.rect(this.block.region, x, y);
+		Draw.rect(this.block.outRegion, x, y, this.rotdeg());
+		let pratio = this.getProgress();
+		this.drawBelow();
+		this.drawPayload();
+		if(this.isWorking()){
+			let unitSprite = this.getUnitSprite();
+			if(this.pieces.length==0 || this.usprite!=unitSprite){
+				this.pieces=[];
+				this.gw = Math.max(1,Mathf.floor(unitSprite.width/24));
+				this.gh = Math.max(1,Mathf.floor(unitSprite.height/24));
+				this.cw = unitSprite.width/this.gw;
+				this.ch = unitSprite.height/this.gh;
+				this.usprite=unitSprite;
+				let ox = (-this.usprite.width*0.5 + this.cw*0.5)*Draw.scl;
+				let oy = (-this.usprite.height*0.5 + this.ch*0.5)*Draw.scl;
+				for (let j = 0;j<this.gh;j++){
+					for (let i = 0;i<this.gw;i++){
+						this.pieces.push({
+							tex: new TextureRegion(unitSprite, i*this.cw, j*this.ch,this.cw,this.ch),
+							x: (this.cw * i)*Draw.scl + ox,
+							y: (this.ch * j)*Draw.scl + oy
+						});
+					}	
+				}
+				this.resetArms();
+				this.assignPaths();
+			}
+			this.windup += (1.0-this.windup)*0.08;
+			let rx = 0;
+			let ry = 0;
+			let ax = 0;
+			let ay = 0;
+			
+			let showam = Mathf.clamp(Mathf.ceil(this.pieces.length*pratio),0,this.pieces.length);
+			for (let i = 0;i<showam;i++){
+				rx = this.pieces[i].x;
+				ry = this.pieces[i].y;
+				ax = Mathf.cosDeg(rotdeg-90)*rx + Mathf.sinDeg(rotdeg-90)*ry; 
+				ay = Mathf.sinDeg(rotdeg-90)*rx - Mathf.cosDeg(rotdeg-90)*ry; 
+				if(i<showam-1){
+					Draw.rect(this.pieces[i].tex, x+ax, y+ay, rotdeg - 90.0);
+				}else{
+					let leftover = (this.pieces.length*pratio)%1.0;
+					Draw.rect(this.pieces[i].tex, x+ax, y+ay, this.cw*Draw.scl*leftover, this.ch*Draw.scl*leftover, rotdeg - 90.0);
+				}
+			}
+			//Draw.rect(unitSprite, x, y, rotdeg - 90.0);
+			//Draw.draw(Layer.blockOver, () -> Drawf.construct(this, plan.unit, rotdeg() - 90f, progress / plan.time, speedScl, time));
+		}else{
+			this.pieces=[];
+			this.usprite = null;
+		}
+
+		Draw.z(Layer.blockOver);
+
+		this.payRotation = rotdeg;
+		
+
+		Draw.z(Layer.blockOver + 0.1);
+		Draw.rect(this.block.topRegion, x, y);
+		this.drawArms(x,y,pratio,rotdeg);
+		
+		
+	},
+	
+	drawArms(x,y,pratio,rotdeg){
+		for(let i=0;i<this.arms.length;i++){
+			this.arms[i].draw(x,y,pratio,rotdeg,this.speedScl*(this.payload==null?1:0))
+		}
+	},
+	
+	setupArms(){
+		this.arms.push(mechArm.newArm(-32,16, -32,-16));
+		this.arms.push(mechArm.newArm(32,-16, 32,16));
+		this.arms[1].type = type_line_welder;
+	},
+	
+	resetArms(){
+		for (let i = 0;i<this.arms.length;i++){
+			this.arms[i].positions = [];
+		}
+	},
+	assignArmTask(type,tasks){
+		switch(type){
+			case type_point_welder:
+				this.arms[0].positions = this.arms[0].positions.concat(tasks);
+			break;
+			case type_line_welder:
+				this.arms[1].positions = this.arms[1].positions.concat(tasks);
+			break;
+		}
+	},
+	squarePath(x,y,x2,y2,tstart,tend){
+		return [
+			{x: x, y: y, t: tstart, a: true },
+			{x: x2,y: y, t: Mathf.lerp(tstart,tend,0.2), a: true },
+			{x: x2,y: y2,t: Mathf.lerp(tstart,tend,0.4), a: true },
+			{x: x ,y: y2,t: Mathf.lerp(tstart,tend,0.6), a: true },
+			{x: x ,y: y ,t: tend, a: false },
+		];
+	},
+	assignPaths(){
+		let dt = 1.0/(this.pieces.length*1.0);
+		for (let i = 0;i<this.pieces.length;i++){
+			let ax = this.pieces[i].x/Draw.scl;
+			let ay = this.pieces[i].y/Draw.scl;
+			this.assignArmTask(type_point_welder,[{
+				x: ax,
+				y: ay,
+				t: i*dt
+			}]);
+			this.assignArmTask(type_line_welder,
+				this.squarePath( ax-this.cw*0.5, ay-this.ch*0.5, ax+this.cw*0.5, ay+this.ch*0.5,    i*dt + 0.6*(dt),  i*dt + 0.9*(dt))
+			);
+		}
+		for (let i = 0;i<this.arms.length;i++){
+			if(this.arms[i].positions[0].t>0){
+				
+				this.arms[i].positions = [{
+					x: this.arms[i].restx,
+					y: this.arms[i].resty,
+					t: 0,
+					a: false,
+				}].concat(this.arms[i].positions);
+			}
+		}
+	}
+}
+
+const reconFacB = Object.assign(deepCopy(unitFacB),{
+	getUnitSprite(){
+		if(this.isWorking()){
+			return this.upgrade(this.payload.unit.type).fullIcon;
+		}
+		return Core.atlas.find("error");
+	},
+	isWorking(){
+		return this.constructing() && this.hasArrived();
+	},
+	getProgress(){
+		if(this.isWorking()){
+			return this.progress / this.block.constructTime;
+		}
+		return 1;
+	},
+	drawBelow(){
+		let fallback = true;
+		for(let i = 0; i < 4; i++){
+			if(this.blends(i) && i != this.rotation){
+				Draw.rect(this.block.inRegion, this.x, this.y, (i * 90) - 180);
+				fallback = false;
+			}
+		}
+		if(fallback){ 
+			Draw.rect(this.block.inRegion, this.x, this.y, this.rotation * 90);
+		}
+		if(this.isWorking()){
+			Draw.rect(this.payload.unit.type.fullIcon, this.x, this.y, this.payload.rotation() - 90);
+		}
+	},
+	assignArmTask(type,tasks){
+		Log.info(type+","+tasks);
+		switch(type){
+			case type_point_welder:
+				this.arms[0].positions = this.arms[0].positions.concat(tasks);
+			break;
+			case type_line_welder:
+				this.arms[1].positions = this.arms[1].positions.concat(tasks);
+			break;
+		}
+	},
+	setupArms(){
+		this.arms.push(mechArm.newArm(-32,0, 0,-32));
+		this.arms.push(mechArm.newArm(32,0, 0,32));
+		this.arms[1].type = type_line_welder;
+	},
+	drawArms(x,y,pratio,rotdeg){
+		for(let i=0;i<this.arms.length;i++){
+			this.arms[i].draw(x,y,pratio,rotdeg,this.speedScl);
+		}
+	},
+});
+
 var water;
 var slag;
 var flyingbuffer;
@@ -402,13 +708,26 @@ cons(e => {
 	
 
 	Vars.content.getBy(ContentType.item).each(item=>{
-		changeAtlasToSprite("item",item.name,item.icon(Cicon.medium));
+		changeAtlasToSprite("item",item.name,item.fullIcon);
 	});
 	
 	var envrionment = Core.atlas.find("grass1").texture;
 	var envpixmap = envrionment.getTextureData().pixmap;
-	
-	
+	armbase = Core.atlas.find("xelos-pixel-texturepack-construct-arm-base");
+	armhead = Core.atlas.find("xelos-pixel-texturepack-construct-arm-head");
+	armconn = Core.atlas.find("xelos-pixel-texturepack-construct-arm-connector");
+	weldspark = new Effect(12, cons(e=>{
+		Draw.color(Color.white, Pal.turretHeat, e.fin());
+        Lines.stroke(e.fout() * 0.6 + 0.6);
+
+        Angles.randLenVectors(e.id, 3, 15 * e.finpow(), e.rotation, 3, new Floatc2(){get: (x, y) => {
+            Lines.lineAngle(e.x + x, e.y + y, Mathf.angle(x, y), e.fslope() * 5 + 0.5);
+        }});
+	}));
+	weldglow = new Effect(20, cons(e=>{
+		Draw.color(Color.white, Pal.turretHeat, e.fin());
+        Fill.square(e.x,e.y,e.fout() * 0.6 + 0.6);
+	}));
 	
 	Vars.content.getBy(ContentType.block).each(block=>{
 		if(!(block instanceof BaseTurret) &&
@@ -416,6 +735,7 @@ cons(e => {
 			!(block instanceof PayloadConveyor) &&
 			!(block instanceof LiquidBlock) &&
 			!(block instanceof UnitFactory) &&
+			!(block instanceof Reconstructor) &&
 			!(block instanceof RepairPoint) &&
 			!(block instanceof MassDriver) &&
 			!(block instanceof Floor) &&
@@ -456,8 +776,9 @@ cons(e => {
 	envrionment.load(envrionment.getTextureData());
 	
 	Vars.content.getBy(ContentType.unit).each(unit=>{
-		changeAtlasToSprite("unit",unit.name + "-outline",Core.atlas.find(unit.name) + "-outline");
-		changeAtlasToSprite("unit",unit.name,Core.atlas.find(unit.name));
+		changeAtlasToSprite("unit",unit.name + "-outline",Core.atlas.find("unit-"+unit.name + "-outline"));
+		unit.loadIcon();
+		changeAtlasToSprite("unit",unit.name,unit.fullIcon);
 	});
 	
 	Blocks.sporeMoss.blendGroup = Blocks.moss;
@@ -538,6 +859,20 @@ cons(e => {
 			}
 			
 		});
+	}
+	
+	Blocks.airFactory.buildType = ()=>{
+		return extendContent(UnitFactory.UnitFactoryBuild, Blocks.airFactory,deepCopy(unitFacB));
+	}
+	Blocks.groundFactory.buildType = ()=>{
+		return extendContent(UnitFactory.UnitFactoryBuild, Blocks.groundFactory,deepCopy(unitFacB));
+	}
+	Blocks.navalFactory.buildType = ()=>{
+		return extendContent(UnitFactory.UnitFactoryBuild, Blocks.navalFactory,deepCopy(unitFacB));
+	}
+	
+	Blocks.additiveReconstructor.buildType = ()=>{
+		return extendContent(Reconstructor.ReconstructorBuild, Blocks.additiveReconstructor,deepCopy(reconFacB));
 	}
 
 	
