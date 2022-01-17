@@ -112,6 +112,12 @@ function getRegion(region, tile,sheetw,sheeth) {
 function drawOrientedRect(tex,x,y,ox,oy,rotdeg,rot){
 	Draw.rect(tex,x + Mathf.cosDeg(rotdeg-90)*ox + Mathf.sinDeg(rotdeg-90)*oy,y + Mathf.sinDeg(rotdeg-90)*ox - Mathf.cosDeg(rotdeg-90)*oy,rot+rotdeg);
 }
+
+function drawOrientedLine(tex,x,y,ox,oy,ox2,oy2,rotdeg){
+	let c = Mathf.cosDeg(rotdeg-90);
+	let s = Mathf.sinDeg(rotdeg-90);
+	Lines.line(tex,   x + c*ox + s*oy,y + s*ox - c*oy,   x + c*ox2 + s*oy2,y + s*ox2 - c*oy2,   false);
+}
 function createOrientedEffect(eff,x,y,ox,oy,rotdeg,rot){
 	eff.at(x + Mathf.cosDeg(rotdeg-90)*ox + Mathf.sinDeg(rotdeg-90)*oy,y + Mathf.sinDeg(rotdeg-90)*ox - Mathf.cosDeg(rotdeg-90)*oy,rot);
 }
@@ -365,7 +371,7 @@ const bridgeB={
 
 const type_point_welder = 0;
 const type_line_welder = 1;
-
+const type_large_welder = 2;
 const mechArm = {
 	fromX:0,
 	fromY:0,
@@ -393,8 +399,8 @@ const mechArm = {
 							let dty = (this.positions[i].y-this.ty);
 							this.tx += dtx*0.1*spd;
 							this.ty += dty*0.1*spd;
-							if(Math.abs(dtx)+Math.abs(dty)<1 && this.lastEffect<0){
-								createOrientedEffect(weldspark,bx,by,this.tx*Draw.scl,this.ty*Draw.scl,rotdeg,45+Mathf.range(7));
+							if(Math.abs(dtx)+Math.abs(dty)<1 && this.lastEffect<0 && this.positions[i].a){
+								createOrientedEffect(weldspark,bx,by,this.tx*Draw.scl,this.ty*Draw.scl,rotdeg,45+Mathf.range(7) +i*839);
 								this.lastEffect = 5;
 							}
 							break;
@@ -410,7 +416,7 @@ const mechArm = {
 							this.ty = Mathf.lerp(curr.y,next.y,l);
 							if(curr.a){
 								if(this.lastEffect<0){
-									createOrientedEffect(weldspark,bx,by,this.tx*Draw.scl,this.ty*Draw.scl,rotdeg,45+Mathf.range(7));
+									createOrientedEffect(weldspark,bx,by,this.tx*Draw.scl,this.ty*Draw.scl,rotdeg,45+Mathf.range(7)+i*4);
 									this.lastEffect = 5;
 								}
 								if(this.lastEffect2<0){
@@ -424,9 +430,13 @@ const mechArm = {
 				}
 			}
 		}else{
-			this.tx += (this.restx -this.tx)*0.2;
-			this.ty += (this.resty -this.ty)*0.2;
+			this.tx += (this.restx -this.tx)*0.1;
+			this.ty += (this.resty -this.ty)*0.1;
 		}
+		this.drawArm(bx,by,rotdeg,progress);
+	},
+	
+	drawArm(bx,by,rotdeg,progress){
 		let dx = this.toX-this.fromX; let dy = this.toY - this.fromY;
 		let slidepos = ((this.tx-this.fromX)*dx + (this.ty-this.fromY)*dy)/(dx*dx+dy*dy);
 		
@@ -438,6 +448,16 @@ const mechArm = {
 		}
 		drawOrientedRect(armhead,bx,by,this.tx*Draw.scl,this.ty*Draw.scl,rotdeg,this.rotation);//
 		drawOrientedRect(armbase,bx,by,x*Draw.scl,y*Draw.scl,rotdeg,this.rotation);//
+	},
+	
+	repeatPosition(rest, t){
+		if(this.positions.length==0){
+			return;
+		}
+		let copy = Object.create(this.positions[this.positions.length-1]);
+		copy.a = rest;
+		copy.t = t;
+		this.positions.push(copy);
 	},
 	
 	resetRail(x,y,x2,y2){
@@ -454,20 +474,89 @@ const mechArm = {
 	},
 	//oriented from a building facing down
 	newArm(x,y,x2,y2){
-		let arm = Object.create(mechArm);
+		let arm = Object.create(this);
 		arm.resetRail(x,y,x2,y2);
 		return arm;
 	}
 }
+
+const pivotingMechArm = Object.assign(deepCopy(mechArm),{
+	seglength:40,
+	pox:0,poy:0,
+	drawArm(bx,by,rotdeg,progress){
+		let dx = this.toX-this.fromX; let dy = this.toY - this.fromY;
+		let slidepos = ((this.tx-this.fromX)*dx + (this.ty-this.fromY)*dy)/(dx*dx+dy*dy);
+		slidepos = Mathf.clamp(slidepos,0,1);
+		let x = Mathf.lerp(this.fromX,this.toX,slidepos);
+		let y = Mathf.lerp(this.fromY,this.toY,slidepos);
+		let tdx = this.tx-x;
+		let tdy = this.ty-y;
+		let tdd = Mathf.dst(0,0,tdx,tdy);
+		let itdd = 1.0/tdd;
+		let o = Mathf.sqrt(this.seglength*this.seglength - tdd*tdd*0.25)
+		if(o<0 || isNaN(o)){
+			o = 0;
+		}
+		let otx = o*(tdy*itdd);
+		let oty = o*(tdx*itdd);
+		if(Math.abs(x + tdx*0.5 + otx - this.pox)+Math.abs(y + tdy*0.5 - oty - this.poy) > 
+		   Math.abs(x + tdx*0.5 - otx - this.pox)+Math.abs(y + tdy*0.5 + oty - this.poy)){
+			o*=-1;
+		}
+		
+		let ox = x + tdx*0.5 + o*(tdy*itdd);
+		let oy = y + tdy*0.5 - o*(tdx*itdd);
+		
+		this.drawArmActual(x,y,bx,by,ox,oy,rotdeg,progress);
+		
+		this.pox=ox;
+		this.poy=oy;
+		if(progress==1){
+			this.pox = 0;
+			this.poy = 0;
+		}
+	},
+	
+	drawArmActual(x,y,bx,by,ox,oy,rotdeg,progress){
+		Lines.stroke(8);
+		drawOrientedLine(armconntickside, bx,by, ox*Draw.scl, oy*Draw.scl, x*Draw.scl, y*Draw.scl,rotdeg);
+		drawOrientedLine(armconnside, bx,by, ox*Draw.scl, oy*Draw.scl, this.tx*Draw.scl, this.ty*Draw.scl,rotdeg);
+		
+		drawOrientedRect(armconnjoint,bx,by,ox*Draw.scl,oy*Draw.scl,rotdeg,this.rotation);//
+		
+		drawOrientedRect(armbase,bx,by,x*Draw.scl,y*Draw.scl,rotdeg,this.rotation);//
+		drawOrientedRect(armhead,bx,by,this.tx*Draw.scl,this.ty*Draw.scl,rotdeg,this.rotation);//
+	}
+});
+
+const pivotingMechArmLarge = Object.assign(deepCopy(pivotingMechArm),{
+	drawArmActual(x,y,bx,by,ox,oy,rotdeg,progress){
+		Lines.stroke(8);
+		drawOrientedLine(armconntickside, bx,by, ox*Draw.scl, oy*Draw.scl, x*Draw.scl, y*Draw.scl,rotdeg);
+		drawOrientedLine(armconntickside, bx,by, ox*Draw.scl, oy*Draw.scl, this.tx*Draw.scl, this.ty*Draw.scl,rotdeg);
+		
+		drawOrientedRect(armconnjoint,bx,by,ox*Draw.scl,oy*Draw.scl,rotdeg,this.rotation);//
+		
+		drawOrientedRect(armbase,bx,by,x*Draw.scl,y*Draw.scl,rotdeg,this.rotation);//
+		drawOrientedRect(armheadlarge,bx,by,this.tx*Draw.scl,this.ty*Draw.scl,rotdeg,this.rotation);//
+	}
+})
 var armbase=null;
 var armhead=null;
+var armheadlarge=null;
 var armconn=null;
+var armconnside=null;
+var armconntickside=null;
+var armconnjoint=null;
+var expoplatform = null;
 var weldspark = null;
 var weldglow = null;
+
 const unitFacB = {
 	arms: [],
 	pieces: [],
 	gw:0,gh:0,cw:0,ch:0,usprite:null,
+	gsize: 24,
 	getUnitSprite(){
 		if(this.currentPlan != -1){
 			return this.block.plans.get(this.currentPlan).unit.fullIcon;
@@ -486,6 +575,9 @@ const unitFacB = {
 	drawBelow(){
 		
 	},
+	drawOntop(){
+		
+	},
 	draw(){	
 		if(this.arms.length == 0){
 			this.setupArms();
@@ -502,22 +594,12 @@ const unitFacB = {
 			let unitSprite = this.getUnitSprite();
 			if(this.pieces.length==0 || this.usprite!=unitSprite){
 				this.pieces=[];
-				this.gw = Math.max(1,Mathf.floor(unitSprite.width/24));
-				this.gh = Math.max(1,Mathf.floor(unitSprite.height/24));
+				this.gw = Math.max(1,Mathf.floor(unitSprite.width/this.gsize));
+				this.gh = Math.max(1,Mathf.floor(unitSprite.height/this.gsize));
 				this.cw = unitSprite.width/this.gw;
 				this.ch = unitSprite.height/this.gh;
 				this.usprite=unitSprite;
-				let ox = (-this.usprite.width*0.5 + this.cw*0.5)*Draw.scl;
-				let oy = (-this.usprite.height*0.5 + this.ch*0.5)*Draw.scl;
-				for (let j = 0;j<this.gh;j++){
-					for (let i = 0;i<this.gw;i++){
-						this.pieces.push({
-							tex: new TextureRegion(unitSprite, i*this.cw, j*this.ch,this.cw,this.ch),
-							x: (this.cw * i)*Draw.scl + ox,
-							y: (this.ch * j)*Draw.scl + oy
-						});
-					}	
-				}
+				this.makePieces(unitSprite);
 				this.resetArms();
 				this.assignPaths();
 			}
@@ -533,15 +615,12 @@ const unitFacB = {
 				ry = this.pieces[i].y;
 				ax = Mathf.cosDeg(rotdeg-90)*rx + Mathf.sinDeg(rotdeg-90)*ry; 
 				ay = Mathf.sinDeg(rotdeg-90)*rx - Mathf.cosDeg(rotdeg-90)*ry; 
-				if(i<showam-1){
-					Draw.rect(this.pieces[i].tex, x+ax, y+ay, rotdeg - 90.0);
-				}else{
-					let leftover = (this.pieces.length*pratio)%1.0;
-					Draw.rect(this.pieces[i].tex, x+ax, y+ay, this.cw*Draw.scl*leftover, this.ch*Draw.scl*leftover, rotdeg - 90.0);
+				let size = (pratio-this.pieces[i].tstart)/(this.pieces[i].tend - this.pieces[i].tstart);
+				size = Mathf.clamp(size,0,1);
+				if(size>0){
+					Draw.rect(this.pieces[i].tex, x+ax, y+ay, this.cw*Draw.scl*size, this.ch*Draw.scl*size, rotdeg - 90.0);
 				}
 			}
-			//Draw.rect(unitSprite, x, y, rotdeg - 90.0);
-			//Draw.draw(Layer.blockOver, () -> Drawf.construct(this, plan.unit, rotdeg() - 90f, progress / plan.time, speedScl, time));
 		}else{
 			this.pieces=[];
 			this.usprite = null;
@@ -553,10 +632,34 @@ const unitFacB = {
 		
 
 		Draw.z(Layer.blockOver + 0.1);
-		Draw.rect(this.block.topRegion, x, y);
+		Draw.rect(this.block.topRegion, x, y,rotdeg);
+		this.drawOntop();
 		this.drawArms(x,y,pratio,rotdeg);
 		
 		
+	},
+	
+	makePieces(unitSprite){
+		let ox = (-this.usprite.width*0.5 + this.cw*0.5)*Draw.scl;
+		let oy = (-this.usprite.height*0.5 + this.ch*0.5)*Draw.scl;
+		let count = 0.0;
+		let total = this.gh*this.gw;
+		for (let j = 0;j<this.gh;j++){
+			for (let i = 0;i<this.gw;i++){
+				let lx = Mathf.floor(i*this.cw);
+				let lx2 = Mathf.floor((i+1)*this.cw);
+				this.pieces.push({
+					tex: new TextureRegion(unitSprite, lx, j*this.ch,lx2-lx,this.ch),
+					x: (lx)*Draw.scl + ox,
+					y: (this.ch * j)*Draw.scl + oy,
+					w: lx2-lx,
+					h: this.ch,
+					tstart: count/total,
+					tend: (count+1)/total,
+				});
+				count ++;
+			}	
+		}
 	},
 	
 	drawArms(x,y,pratio,rotdeg){
@@ -600,17 +703,25 @@ const unitFacB = {
 		for (let i = 0;i<this.pieces.length;i++){
 			let ax = this.pieces[i].x/Draw.scl;
 			let ay = this.pieces[i].y/Draw.scl;
+			let piece = this.pieces[i];
 			this.assignArmTask(type_point_welder,[{
 				x: ax,
 				y: ay,
-				t: i*dt
+				t: piece.tstart,
+				a: true,
 			}]);
+			this.assignArmTask(type_large_welder,[
+				{x: ax-piece.w*0.25,y: ay-piece.h*0.25,t: Mathf.lerp(piece.tstart,piece.tend,0.25),a: true},
+				{x: ax+piece.w*0.25,y: ay-piece.h*0.25,t: Mathf.lerp(piece.tstart,piece.tend,0.45),a: true},
+				{x: ax+piece.w*0.25,y: ay+piece.h*0.25,t: Mathf.lerp(piece.tstart,piece.tend,0.65),a: true},
+				{x: ax-piece.w*0.25,y: ay+piece.h*0.25,t: Mathf.lerp(piece.tstart,piece.tend,0.85),a: true},
+			]);
 			this.assignArmTask(type_line_welder,
-				this.squarePath( ax-this.cw*0.5, ay-this.ch*0.5, ax+this.cw*0.5, ay+this.ch*0.5,    i*dt + 0.6*(dt),  i*dt + 0.9*(dt))
+				this.squarePath( ax-piece.w*0.5, ay-piece.h*0.5, ax+piece.w*0.5, ay+piece.h*0.5,   Mathf.lerp(piece.tstart,piece.tend,0.6),   Mathf.lerp(piece.tstart,piece.tend,0.9))
 			);
 		}
 		for (let i = 0;i<this.arms.length;i++){
-			if(this.arms[i].positions[0].t>0){
+			if(this.arms[i].positions.length == 0 || this.arms[i].positions[0].t>0){
 				
 				this.arms[i].positions = [{
 					x: this.arms[i].restx,
@@ -666,15 +777,18 @@ const reconFacB = Object.assign(deepCopy(unitFacB),{
 		}
 	},
 	setupArms(){
-		this.arms.push(mechArm.newArm(-32,0, 0,-32));
-		this.arms.push(mechArm.newArm(32,0, 0,32));
+		this.arms.push(pivotingMechArm.newArm(-40,-32, -39,-32));
+		this.arms.push(pivotingMechArm.newArm(40,32, 39,32));
 		this.arms[1].type = type_line_welder;
+		this.arms[0].seglength = 54;
+		this.arms[1].seglength = 54;
 	},
 	drawArms(x,y,pratio,rotdeg){
 		for(let i=0;i<this.arms.length;i++){
 			this.arms[i].draw(x,y,pratio,rotdeg,this.speedScl);
 		}
 	},
+	
 });
 
 var water;
@@ -715,7 +829,12 @@ cons(e => {
 	var envpixmap = envrionment.getTextureData().pixmap;
 	armbase = Core.atlas.find("xelos-pixel-texturepack-construct-arm-base");
 	armhead = Core.atlas.find("xelos-pixel-texturepack-construct-arm-head");
+	armheadlarge = Core.atlas.find("xelos-pixel-texturepack-construct-arm-head-large");
 	armconn = Core.atlas.find("xelos-pixel-texturepack-construct-arm-connector");
+	armconnside = Core.atlas.find("xelos-pixel-texturepack-construct-arm-connector-side");
+	armconntickside = Core.atlas.find("xelos-pixel-texturepack-construct-arm-connector-thick-side");
+	armconnjoint = Core.atlas.find("xelos-pixel-texturepack-construct-arm-connector-joint");
+	expoplatform = Core.atlas.find("xelos-pixel-texturepack-construct-platform");
 	weldspark = new Effect(12, cons(e=>{
 		Draw.color(Color.white, Pal.turretHeat, e.fin());
         Lines.stroke(e.fout() * 0.6 + 0.6);
@@ -873,6 +992,129 @@ cons(e => {
 	
 	Blocks.additiveReconstructor.buildType = ()=>{
 		return extendContent(Reconstructor.ReconstructorBuild, Blocks.additiveReconstructor,deepCopy(reconFacB));
+	}
+	
+	Blocks.multiplicativeReconstructor.buildType = ()=>{
+		return extendContent(Reconstructor.ReconstructorBuild, Blocks.multiplicativeReconstructor,Object.assign(deepCopy(reconFacB),{
+			assignArmTask(type,tasks){
+				switch(type){
+					case type_point_welder:
+						if(tasks[0].x<=0){
+							this.arms[0].positions = this.arms[0].positions.concat(tasks);
+							this.arms[3].repeatPosition(false,tasks[0].t);
+						}else{
+							this.arms[3].positions = this.arms[3].positions.concat(tasks);
+							this.arms[0].repeatPosition(false,tasks[0].t);
+						}
+					break;
+					case type_line_welder:
+						if(tasks[0].x<=0){
+							this.arms[1].positions = this.arms[1].positions.concat(tasks);
+						}else{
+							this.arms[2].positions = this.arms[2].positions.concat(tasks);
+						}
+					break;
+				}
+			},
+			setupArms(){
+				this.arms.push(pivotingMechArm.newArm(-51,-22, -22,-51));
+				this.arms.push(pivotingMechArm.newArm(-22,51,-51,22,));
+				this.arms.push(pivotingMechArm.newArm( 22,-51,51,-22));
+				this.arms.push(pivotingMechArm.newArm( 51,22,22,51));
+				this.arms[1].type = type_line_welder;
+				this.arms[2].type = type_line_welder;
+				this.arms[0].seglength = 40;
+				this.arms[1].seglength = 40;
+				this.arms[2].seglength = 40;
+				this.arms[3].seglength = 40;
+			},
+			makePieces(unitSprite){
+				let ox = (-this.usprite.width*0.5 + this.cw*0.5)*Draw.scl;
+				let oy = (-this.usprite.height*0.5 + this.ch*0.5)*Draw.scl;
+				let count = 0.0;
+				let total = this.gh*this.gw;
+				let tempList = [];
+				for (let j = 0;j<this.gh;j++){
+					for (let i = 0;i<this.gw;i++){
+						tempList.push({
+							tex: new TextureRegion(unitSprite, i*this.cw, j*this.ch,this.cw,this.ch),
+							x: (this.cw * i)*Draw.scl + ox,
+							y: (this.ch * j)*Draw.scl + oy,
+							w: this.cw,
+							h: this.ch,
+							tstart: count/total,
+							tend: (count+1)/total,
+						});
+						count ++;
+					}	
+				}
+				tempList.sort((f, s) => { 
+					return (Math.abs(f.x)+Math.abs(f.y))-(Math.abs(s.x)+Math.abs(s.y));
+				});
+				for (let i = 0;i<tempList.length;i++){
+					tempList[i].tstart = i/total;
+					tempList[i].tend = (i+1)/total;
+					this.pieces.push(tempList[i]);
+				}
+			},
+		}));
+	}
+	
+	Blocks.exponentialReconstructor.buildType = ()=>{
+		return extendContent(Reconstructor.ReconstructorBuild, Blocks.exponentialReconstructor,Object.assign(deepCopy(reconFacB),{
+			gsize:48,
+			platformy: 0,
+			assignArmTask(type,tasks){
+				switch(type){
+					case type_point_welder:
+						if(tasks[0].x<=0){
+							this.arms[0].positions = this.arms[0].positions.concat(tasks);
+							this.arms[3].repeatPosition(false,tasks[0].t);
+						}else{
+							this.arms[3].positions = this.arms[3].positions.concat(tasks);
+							this.arms[0].repeatPosition(false,tasks[0].t);
+						}
+						
+					break;
+					case type_line_welder:
+						if(tasks[0].x<=0){
+							this.arms[1].positions = this.arms[1].positions.concat(tasks);
+						}else{
+							this.arms[2].positions = this.arms[2].positions.concat(tasks);
+						}
+					break;
+					case type_large_welder:
+						this.arms[4].positions = this.arms[4].positions.concat(tasks);
+					break;
+				}
+			},	
+			setupArms(){
+				
+				this.arms.push(pivotingMechArm.newArm( -80,0,-48,0));
+				this.arms.push(pivotingMechArm.newArm( -48,0,-16,0));//
+				this.arms.push(pivotingMechArm.newArm( 16,0,48,0));
+				this.arms.push(pivotingMechArm.newArm( 48,0,80,0));
+				this.arms.push(pivotingMechArmLarge.newArm( -16,0,16,0));//
+				
+				this.arms[1].type = type_line_welder;
+				this.arms[2].type = type_line_welder;
+				this.arms[0].seglength = 40;
+				this.arms[1].seglength = 40;
+				this.arms[2].seglength = 40;
+				this.arms[3].seglength = 40;
+				this.arms[4].seglength = 80;
+			},
+			drawOntop(){
+				let target = (this.getProgress()-0.5)*32*5;
+				target += this.getProgress()<0.5? 32: -32;
+				
+				this.platformy += (target-this.platformy)*0.03;
+				for(let i =0;i<this.arms.length;i++){
+					this.arms[i].resetRail(this.arms[i].fromX, this.platformy,this.arms[i].toX, this.platformy);
+				}
+				drawOrientedRect(expoplatform,this.x,this.y,0,this.platformy*Draw.scl,this.rotdeg(),90);
+			},
+		}));
 	}
 
 	
