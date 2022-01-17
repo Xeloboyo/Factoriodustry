@@ -1,5 +1,5 @@
 # Pixel Texturepack Mindustry
-A texturepack for mindustry, <h2><b>currently in dev, there are missing blocks</b></h2>
+A texturepack for mindustry, <h2><b>V6 branch is no longer being maintained! Head over to v7 branch instead</b></h2>
 
 Access Trello:
 https://trello.com/invite/b/4OhnrdkU/26bae77d18289eeeefaa080ef7611dab/texturepack-todolist
