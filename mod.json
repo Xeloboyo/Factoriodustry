@@ -1,8 +1,10 @@
-name: xelos-pixel-texturepack
-displayName: Pixel TexturePack Mod
-author: Xelo
-description: Brings back some of that early mindustry charm, can be multiplayered with vanilla
-version: "0.3.5"
-hidden: true
-minGameVersion: "104.0"
-dependencies: [ ]
+{
+  "name": "xelos-pixel-texturepack",
+  "displayName": "FactoryDustry - TexturePack",
+  "author": "Xelo",
+  "description": "Brings back some of that early mindustry charm, can be multiplayered with vanilla\nContributors: VozDuh",
+  "version": "0.4.1",
+  "hidden": true,
+  "minGameVersion": "105",
+  "dependencies": []
+}
