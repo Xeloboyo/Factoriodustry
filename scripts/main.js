@@ -197,16 +197,20 @@ function drawItemCluster(x,y,item,am,randpos,startp){
 	if(am>0){
 		am = Math.min(am,100);
 		for(var i = 0;i<am;i++){
-			Draw.rect(item.icon(Cicon.medium), x+randpos[(i+startp)%randpos.length].x, y+randpos[(i+startp)%randpos.length].y, 5,5);
+			Draw.rect(item.fullIcon, x+randpos[(i+startp)%randpos.length].x, y+randpos[(i+startp)%randpos.length].y, 5,5);
 		}
 	}
 }
 function drawItemClusterInventory(x,y,item,items,randpos,startp){
 	drawItemCluster(x,y,item,items.get(item),randpos,startp);
 }
+function readString(path){
+        return Vars.tree.get(path, true).readString();
+ }
 function extendShader2(shadername, ext){
-	return extend(Shaders.SurfaceShader,readString("shaders/screenspace.vert"), readString("shaders/"+shadername+".frag"),ext);
+	return extendShader(shadername,ext);//extend(Shaders.SurfaceShader, readString("shaders/"+shadername+".frag"),ext);
 }
+
 function extendShader(shadername, ext){
 	const shad = new Shader(readString("shaders/screenspace.vert"), readString("shaders/"+shadername+".frag"));
 	return extend(Shaders.SurfaceShader, "space", Object.assign({
@@ -272,7 +276,7 @@ function addShader(shader, name){
 }
 
 function initShader(){
-	Shaders.water = extendShader("water", {
+	Shaders.water = extendShader2("water", {
 		apply(){
 			flyingbuffer.getTexture().bind(2);
 			this.super$apply();
@@ -283,7 +287,7 @@ function initShader(){
 	);
 	addShader(Shaders.water,"water");
 	
-	Shaders.tar = extendShader("tar", {
+	Shaders.tar = extendShader2("tar", {
 		apply(){
 			flyingbuffer.getTexture().bind(2);
 			this.super$apply();
@@ -294,7 +298,7 @@ function initShader(){
 	);
 	addShader(Shaders.tar,"tar");
 	
-	Shaders.mud = extendShader("mud", {
+	Shaders.mud = extendShader2("mud", {
 		apply(){
 			flyingbuffer.getTexture().bind(2);
 			this.super$apply();
@@ -305,7 +309,7 @@ function initShader(){
 	);
 	addShader(Shaders.mud,"mud");
 	
-	Shaders.slag = extendShader("slag", {});
+	Shaders.slag = extendShader2("slag", {});
 	addShader(Shaders.slag,"slag");
 	
 }
@@ -346,7 +350,7 @@ const storageB= {
 			
 			for(var tr = 0;tr<this.shuffle.length;tr++){
 				if(iiar[this.shuffle[tr]]){
-					Draw.rect(iiar[this.shuffle[tr]].icon(Cicon.medium), this.x+this.randpos[tr].x, this.y+this.randpos[tr].y, 5,5);
+					Draw.rect(iiar[this.shuffle[tr]].fullIcon, this.x+this.randpos[tr].x, this.y+this.randpos[tr].y, 5,5);
 				}
 			}
 		}
@@ -432,7 +436,7 @@ const bridgeB={
 		for(var m = 0;m<this.itemmove.length;m++){
 			if(this.itemmove[m] && this.itemmove[m].item && this.itemmove[m].t+ttime>Time.time){
 				var tlerp = (Time.time-this.itemmove[m].t)/ttime;
-				Draw.rect(this.itemmove[m].item.icon(Cicon.medium), this.x+ex*tlerp, this.y+ey*tlerp, 3,3);
+				Draw.rect(this.itemmove[m].item.fullIcon, this.x+ex*tlerp, this.y+ey*tlerp, 3,3);
 			}
 		}
 		
@@ -981,12 +985,10 @@ cons(e => {
 			!(block instanceof LiquidBlock) &&
 			!(block instanceof UnitFactory) &&
 			!(block instanceof Reconstructor) &&
-			!(block instanceof RepairPoint) &&
+			!(block instanceof RepairTurret) &&
 			!(block instanceof MassDriver) &&
 			!(block instanceof Floor) &&
-			!(block instanceof Drill) &&
-			!(block instanceof LiquidConverter) &&
-			!(block instanceof Cultivator)){
+			!(block instanceof Drill)){
 			changeAtlasToSprite("block",block.name,Core.atlas.find(block.name));
 		}
 		
@@ -1029,10 +1031,11 @@ cons(e => {
 	Blocks.sporeMoss.blendGroup = Blocks.moss;
 	
 	
-	Blocks.siliconSmelter.drawer = extend(DrawSmelter,{
+	Blocks.siliconSmelter.drawer = extend(DrawBlock,{
 		topreg:null,
 		botreg:null,
 		heatreg:null,
+		flameColor: Color.valueOf("ffc999"),
 		randpos:[],
 		load(block){
 			let alt = Core.atlas.find("xelos-pixel-texturepack-silicon-smelter");
@@ -1069,7 +1072,7 @@ cons(e => {
 	changeAtlasToSprite("block","silicon-smelter",Blocks.siliconSmelter.region);
 	
 	Blocks.forceProjector.buildType = () =>{
-		return extendContent(ForceProjector.ForceBuild, Blocks.forceProjector,{
+		return extend(ForceProjector.ForceBuild, Blocks.forceProjector,{
 			draw(){
 				if(!Core.settings.getBool("seethrough")){
 					this.super$draw();
@@ -1107,21 +1110,21 @@ cons(e => {
 	}
 	
 	Blocks.airFactory.buildType = ()=>{
-		return extendContent(UnitFactory.UnitFactoryBuild, Blocks.airFactory,deepCopy(unitFacB));
+		return extend(UnitFactory.UnitFactoryBuild, Blocks.airFactory,deepCopy(unitFacB));
 	}
 	Blocks.groundFactory.buildType = ()=>{
-		return extendContent(UnitFactory.UnitFactoryBuild, Blocks.groundFactory,deepCopy(unitFacB));
+		return extend(UnitFactory.UnitFactoryBuild, Blocks.groundFactory,deepCopy(unitFacB));
 	}
 	Blocks.navalFactory.buildType = ()=>{
-		return extendContent(UnitFactory.UnitFactoryBuild, Blocks.navalFactory,deepCopy(unitFacB));
+		return extend(UnitFactory.UnitFactoryBuild, Blocks.navalFactory,deepCopy(unitFacB));
 	}
 	
 	Blocks.additiveReconstructor.buildType = ()=>{
-		return extendContent(Reconstructor.ReconstructorBuild, Blocks.additiveReconstructor,deepCopy(reconFacB));
+		return extend(Reconstructor.ReconstructorBuild, Blocks.additiveReconstructor,deepCopy(reconFacB));
 	}
 	
 	Blocks.multiplicativeReconstructor.buildType = ()=>{
-		return extendContent(Reconstructor.ReconstructorBuild, Blocks.multiplicativeReconstructor,Object.assign(deepCopy(reconFacB),{
+		return extend(Reconstructor.ReconstructorBuild, Blocks.multiplicativeReconstructor,Object.assign(deepCopy(reconFacB),{
 			assignArmTask(type,tasks){
 				switch(type){
 					case type_point_welder:
@@ -1187,7 +1190,7 @@ cons(e => {
 	}
 	
 	Blocks.exponentialReconstructor.buildType = ()=>{
-		return extendContent(Reconstructor.ReconstructorBuild, Blocks.exponentialReconstructor,Object.assign(deepCopy(reconFacB),{
+		return extend(Reconstructor.ReconstructorBuild, Blocks.exponentialReconstructor,Object.assign(deepCopy(reconFacB),{
 			gsize:48,
 			platformy: 0,
 			assignArmTask(type,tasks){
@@ -1245,28 +1248,28 @@ cons(e => {
 
 	
 	Blocks.container.buildType = () =>{
-		return extendContent(StorageBlock.StorageBuild, Blocks.container,deepCopy(storageB));
+		return extend(StorageBlock.StorageBuild, Blocks.container,deepCopy(storageB));
 	}
 	Blocks.vault.buildType = () =>{
-		return extendContent(StorageBlock.StorageBuild, Blocks.vault,deepCopy(storageB));
+		return extend(StorageBlock.StorageBuild, Blocks.vault,deepCopy(storageB));
 	}
 	
 	Blocks.itemBridge.buildType = () =>{
-		return extendContent(BufferedItemBridge.BufferedItemBridgeBuild, Blocks.itemBridge,deepCopy(bridgeB));
+		return extend(BufferedItemBridge.BufferedItemBridgeBuild, Blocks.itemBridge,deepCopy(bridgeB));
 	}
 	Blocks.phaseConveyor.buildType = () =>{
-		return extendContent(ItemBridge.ItemBridgeBuild, Blocks.phaseConveyor,deepCopy(bridgeB));
+		return extend(ItemBridge.ItemBridgeBuild, Blocks.phaseConveyor,deepCopy(bridgeB));
 	}
 	
 	
 	Blocks.scrapWall.buildType = () =>{
-		return extendContent(Wall.WallBuild, Blocks.scrapWall,deepCopy(wallB));
+		return extend(Wall.WallBuild, Blocks.scrapWall,deepCopy(wallB));
 	}
 	Blocks.scrapWallLarge.buildType = () =>{
-		return extendContent(Wall.WallBuild, Blocks.scrapWallLarge,deepCopy(wallB));
+		return extend(Wall.WallBuild, Blocks.scrapWallLarge,deepCopy(wallB));
 	}
 	Blocks.scrapWallHuge.buildType = () =>{
-		return extendContent(Wall.WallBuild, Blocks.scrapWallLarge,deepCopy(wallB));
+		return extend(Wall.WallBuild, Blocks.scrapWallLarge,deepCopy(wallB));
 	}
 })
 );
