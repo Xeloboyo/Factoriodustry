@@ -1085,8 +1085,8 @@ cons(e => {
 				Draw.rect(this.block.region, this.x, this.y);
 				let hp = 1.0-(this.buildup / this.block.shieldHealth);
 				
-				if(this.liquids.total() > 0.001){
-					Drawf.liquid(this.block.topRegion, this.x, this.y, this.liquids.total() / this.block.liquidCapacity, this.liquids.current().color);
+				if(this.liquids.currentAmount() > 0.001){
+					Drawf.liquid(this.block.topRegion, this.x, this.y, this.liquids.currentAmount() / this.block.liquidCapacity, this.liquids.current().color);
 				}
 				
 				if(hp>0){
