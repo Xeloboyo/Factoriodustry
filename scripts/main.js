@@ -866,57 +866,59 @@ const reconFacB = Object.assign(deepCopy(unitFacB),{
 	
 });
 
-const wallB={
-	index: [],
-	shadowreg:[],
-	onProximityUpdate(){
-		this.super$onProximityUpdate();
-		if(this.block.size==1){
-			let ind = 0;
-			for(let i =0;i<8;i++){
-				let b = this.nearby(tilechkdirs[i].x, tilechkdirs[i].y);
-				if(b && b instanceof Wall.WallBuild){
-					ind+= 1<<i;
-				}
-			}
-			this.shadowreg[0] = _getRegion(shadowRegion,tileMap[ind]);
-		}else{
-			let offsetx = -Math.floor((this.block.size - 1) / 2);
-            let offsety = -Math.floor((this.block.size - 1) / 2);
-			let regind = 0;
-			for(let a =0;a<this.block.size;a++){
-				for(let b =0;b<this.block.size;b++){
-					let wx = b + offsetx + this.tile.x;
-					let wy = a + offsety + this.tile.y;
-					
-					let ind = 0;
-					for(let i =0;i<8;i++){
-						let b =  Vars.world.build(wx+tilechkdirs[i].x, wy+tilechkdirs[i].y);
-						if(b && b instanceof Wall.WallBuild){
-							ind+= 1<<i;
-						}
+function getConnectedWall(shadowRegion){
+	return {
+		index: [],
+		shadowreg:[],
+		onProximityUpdate(){
+			this.super$onProximityUpdate();
+			if(this.block.size==1){
+				let ind = 0;
+				for(let i =0;i<8;i++){
+					let b = this.nearby(tilechkdirs[i].x, tilechkdirs[i].y);
+					if(b && b instanceof Wall.WallBuild){
+						ind+= 1<<i;
 					}
-					this.shadowreg[regind] = _getRegion(shadowRegion,tileMap[ind]);
-					regind++;
+				}
+				this.shadowreg[0] = _getRegion(shadowRegion,tileMap[ind]);
+			}else{
+				let offsetx = -Math.floor((this.block.size - 1) / 2);
+				let offsety = -Math.floor((this.block.size - 1) / 2);
+				let regind = 0;
+				for(let a =0;a<this.block.size;a++){
+					for(let b =0;b<this.block.size;b++){
+						let wx = b + offsetx + this.tile.x;
+						let wy = a + offsety + this.tile.y;
+						
+						let ind = 0;
+						for(let i =0;i<8;i++){
+							let b =  Vars.world.build(wx+tilechkdirs[i].x, wy+tilechkdirs[i].y);
+							if(b && b instanceof Wall.WallBuild){
+								ind+= 1<<i;
+							}
+						}
+						this.shadowreg[regind] = _getRegion(shadowRegion,tileMap[ind]);
+						regind++;
+					}
+				}
+			}
+			
+		},
+		draw(){
+			this.super$draw();
+			if(this.block.size==1){
+				Draw.rect(this.shadowreg[0],this.x,this.y,0);
+			}else{
+				let off = (this.block.size - 1) / 2.0;
+				for(let a =0;a<this.block.size;a++){
+					for(let b =0;b<this.block.size;b++){
+						let ind = b+a*this.block.size;
+						Draw.rect(this.shadowreg[ind],this.x + (b-off)*8,this.y + (a-off)*8,0);
+					}
 				}
 			}
 		}
-		
-	},
-	draw(){
-		this.super$draw();
-		if(this.block.size==1){
-			Draw.rect(this.shadowreg[0],this.x,this.y,0);
-		}else{
-			let off = (this.block.size - 1) / 2.0;
-			for(let a =0;a<this.block.size;a++){
-				for(let b =0;b<this.block.size;b++){
-					let ind = b+a*this.block.size;
-					Draw.rect(this.shadowreg[ind],this.x + (b-off)*8,this.y + (a-off)*8,0);
-				}
-			}
-		}
-	}
+	};
 }
 
 var water;
@@ -954,6 +956,7 @@ cons(e => {
 	});
 	
 	shadowRegion = Core.atlas.find("xelos-pixel-texturepack-connected-shadows");
+	var shadowRegionNoRivet = Core.atlas.find("xelos-pixel-texturepack-connected-shadows-norivet");
 	
 	var envrionment = Core.atlas.find("grass1").texture;
 	var envpixmap = envrionment.getTextureData().pixmap;
@@ -1262,6 +1265,8 @@ cons(e => {
 		return extend(ItemBridge.ItemBridgeBuild, Blocks.phaseConveyor,deepCopy(bridgeB));
 	}
 	
+	var wallB = getConnectedWall(shadowRegion);
+	var wallBN = getConnectedWall(shadowRegionNoRivet);
 	
 	Blocks.scrapWall.buildType = () =>{
 		return extend(Wall.WallBuild, Blocks.scrapWall,deepCopy(wallB));
@@ -1272,6 +1277,21 @@ cons(e => {
 	Blocks.scrapWallHuge.buildType = () =>{
 		return extend(Wall.WallBuild, Blocks.scrapWallLarge,deepCopy(wallB));
 	}
+	
+	Blocks.copperWall.buildType = () =>{
+		return extend(Wall.WallBuild, Blocks.scrapWall,deepCopy(wallBN));
+	}
+	Blocks.copperWallLarge.buildType = () =>{
+		return extend(Wall.WallBuild, Blocks.scrapWall,deepCopy(wallBN));
+	}
+	
+	Blocks.berylliumWall.buildType = () =>{
+		return extend(Wall.WallBuild, Blocks.scrapWall,deepCopy(wallBN));
+	}
+	Blocks.berylliumWallLarge.buildType = () =>{
+		return extend(Wall.WallBuild, Blocks.scrapWall,deepCopy(wallBN));
+	}
+	
 })
 );
 
