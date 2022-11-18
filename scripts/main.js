@@ -979,6 +979,7 @@ cons(e => {
 	}));
 	
 	Vars.content.getBy(ContentType.block).each(block=>{
+		/*
 		if(!(block instanceof BaseTurret) &&
 		    !(block instanceof Conveyor) &&
 			!(block instanceof PayloadConveyor) &&
@@ -990,7 +991,7 @@ cons(e => {
 			!(block instanceof Floor) &&
 			!(block instanceof Drill)){
 			changeAtlasToSprite("block",block.name,Core.atlas.find(block.name));
-		}
+		}*/
 		
 		if(block instanceof Floor){
 			if(block.variants>0){
