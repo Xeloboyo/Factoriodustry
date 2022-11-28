@@ -1095,7 +1095,7 @@ cons(e => {
 					const size = 3.2;
 					
 					Draw.blend(Blending.additive);
-					Draw.color(this.team.color,this.efficiency())
+					Draw.color(this.team.color,this.efficiency)
 					Lines.stroke(0.8);
 					
 					Lines.line(this.x,this.y-size , this.x + bottomlerp*size, this.y-size + (bottomlerp*size));
