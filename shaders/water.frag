@@ -28,6 +28,7 @@ void main(){
 
 	vec2 v = vec2(1.0/u_resolution.x, 1.0/u_resolution.y);
 	vec2 coords = vec2(c.x / v.x + u_campos.x, c.y / v.y + u_campos.y);
+	vec2 pxlcoords = ((floor(coords*2.0)*0.5)/mscl);
 	
 	vec2 wavecord = c + vec2(sin(stime/3.0 + coords.y/0.75) * v.x, 0.0);
 
@@ -35,7 +36,7 @@ void main(){
 	vec4 fcolor = texture2D(u_texture, wavecord);
     vec3 color = fcolor.rgb *0.7;
 	float hm = min(1.0,texture2D(u_texture, wavecord+vec2(0.0,5.0)*v).a*2.0);
-	vec2 o1 = 0.17*vec2(ridge(texture2D(u_noise,coords/mscl + vec2(btime)).r), ridge(texture2D(u_noise,coords/mscl + vec2(btime*vec2(-1,1))).r));
+	vec2 o1 = 0.17*vec2(ridge(texture2D(u_noise,pxlcoords + vec2(btime)).r), ridge(texture2D(u_noise,pxlcoords + vec2(btime*vec2(-1,1))).r));
 		
 	vec3 cam = normalize(vec3((c.x - 0.5)*(u_resolution.x/u_resolution.y),c.y, 1.0));
 	vec3 light = normalize(vec3(0.0 , -0.5 , 0.7));
