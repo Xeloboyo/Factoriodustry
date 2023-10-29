@@ -12,8 +12,8 @@ varying vec2 v_texCoords;
 const vec2 mscl = vec2(150.0,90.0);
 const float mth = 7.0;
 const vec3 sky = vec3(0.5,0.8,1.0);
-const vec3 basecol = vec3(0.9,0.12,0.05);
-
+const vec3 basecol = vec3(0.25,0.12,0.05);
+const vec3 basecol2 = vec3(0.22,0.2,0.21);
 
 
 float getNoise(vec2 p){
@@ -34,13 +34,17 @@ void main(){
 	vec2 coords = vec2(uv.x / v.x + u_campos.x, uv.y / v.y + u_campos.y);
 	vec2 sclco = ((floor(coords*2.0)*0.5)/mscl);
 	float mednoise = getNoise(sclco*0.3 + vec2(stime));
+	float sizefactor = pow(  0.6*getNoise(sclco*0.1 + 0.1*vec2(stime))+  0.4*mednoise  ,2.0);
     // Time varying pixel color
+	vec2 dpos = (sclco*10.0+ vec2(2.5));
+	float size2 = pow(getNoise(dpos*0.10),5.0)*0.3+0.7* sizefactor;
+	size2=max(0.0,0.2+(size2-0.2)*4.0);
     vec2 off = 1.0* vec2(getNoise(sclco + vec2(btime)), getNoise(sclco + vec2(btime*0.3)));
-		 off += 4.0* vec2(mednoise,mednoise);
+		 off += (16.0 - round(size2+0.4)*12.0)* vec2(mednoise,mednoise);
     
-    vec2 dpos = (sclco*10.0+ off);
+    dpos = (sclco*10.0+ off);
     float size = pow(getNoise((dpos-mod(dpos,1.0))*0.10),5.0);
-    size = size*0.3+0.7* pow(  0.6*getNoise(sclco*0.1 + 0.1*vec2(stime))+  0.4*mednoise  ,2.0);
+    size = size*0.3+0.7* sizefactor;
     size=max(0.0,0.2+(size-0.2)*4.0);
     vec2 rpos = dpos-floor(dpos);
     
@@ -59,6 +63,7 @@ void main(){
 	
 	col += vec3(0.4,0.05,0.0) * max(0.0, 1.0- length(uv - vec2(0.5)));
 	col = mix(col,vec3(0.7),0.25); 
+	col = mix(basecol2,col,clamp(getLiq(rpos+vec2(0.01,0),size-0.3),0.0,1.0));
     gl_FragColor = vec4(col,texture2D(u_texture,uv).a);
 
 }
