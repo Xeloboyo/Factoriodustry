@@ -1,11 +1,12 @@
 
-const _class={
+const bridge={
 	itemmove:[],
 	moveindex:0,
 	cap:6,
 	
 	create(block,team)
     {
+		Log.info("T123 aaa");
 		this.super$create(block,team);
 		this.items = extend(ItemModule,{
 			onTake:null,
@@ -40,6 +41,7 @@ const _class={
 	
     draw()
     {
+
 		this.super$draw();
 		if (!Core.settings.getBool("seethrough")) return;
 		Draw.z(Layer.power);
@@ -69,7 +71,12 @@ const _class={
 				Draw.rect(this.itemmove[m].item.fullIcon, this.x+ex*tlerp, this.y+ey*tlerp, 3,3);
 			}
 		}
-		
+
 		Draw.reset();
 	}
+};
+
+module.exports =
+{
+	bridgeBase: bridge
 }

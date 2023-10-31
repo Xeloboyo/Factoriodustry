@@ -11,6 +11,23 @@ function drawItemCluster(x,y,item,am,randpos,startp)
 	}
 }
 
+function drawItemClusterRotated(x,y,item,am,randpos,startp,ang)
+{
+	if (am>0)
+	{
+		am = Math.min(am,100);
+		let s = Mathf.sin(ang);
+		let c = Mathf.cos(ang);
+
+		for (var i = 0;i<am;i++)
+		{
+			let rx = randpos[(i+startp)%randpos.length].x;
+			let ry = randpos[(i+startp)%randpos.length].y;
+			Draw.rect(item.fullIcon, x+s*rx-c*ry, y+s*ry+c*rx, 5,5);
+		}
+	}
+}
+
 function deepCopy(obj)
 {
 	var clone = {};
@@ -98,6 +115,7 @@ createOrientedEffect: (eff,x,y,ox,oy,rotdeg,rot) =>
 },
 
 drawItemCluster: drawItemCluster,
+drawItemClusterRotated: drawItemClusterRotated,
 
 drawItemClusterInventory: (x,y,item,items,randpos,startp) => drawItemCluster(x,y,item,items.get(item),randpos,startp),
 
