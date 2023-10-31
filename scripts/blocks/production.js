@@ -120,6 +120,58 @@ function siliconCrucible()
 }
 
 
+function mixer()
+{
+	let baseMixer = {
+		topreg:null,
+		botreg:null,
+		rotorreg:null,
+		liquidreg:null,
+		flameColor: Color.valueOf("ffc999"),
+		randpos:[],
+		rot:0,
+
+		load(block)
+		{
+			let alt = utils.Load("xelos-pixel-texturepack-"+block.name);
+			this.topreg = utils.getRegion(alt,1,2,2);
+			this.botreg = utils.getRegion(alt,0,2,2);
+			this.rotorreg = utils.getRegion(alt,2,2,2);
+			this.liquidreg = utils.getRegion(alt,3,2,2);
+			for(var i = 0;i<=10;i++){
+				let r = Mathf.random(3,4);
+				this.randpos[i] = {x: r*Mathf.sin(Mathf.random(0,6.28)),y: r*Mathf.cos(Mathf.random(0,6.28))};
+			}
+		},
+		draw(build)
+		{
+			if (!this.topreg) this.load(build.block);
+			Draw.rect(this.botreg, build.x, build.y);
+
+			if(ValueStore.get(build.id) === null){
+				ValueStore.put(build.id,0);
+			}
+			let rot = ValueStore.get(build.id);
+			ValueStore.put(build.id, rot + Time.delta * build.warmup * 10.0/build.block.craftTime);
+			Draw.rect(this.liquidreg, build.x, build.y);
+			Draw.rect(this.rotorreg, build.x, build.y,rot*1.2);
+			if (Core.settings.getBool("seethrough"))
+			{
+				build.items.each(i=>{
+					utils.drawItemClusterRotated(build.x,build.y,i,build.items.get(i),this.randpos,0,rot+i.id);
+				});
+			}
+
+			Draw.rect(this.topreg, build.x, build.y);
+		},
+		drawPlan(block, plan, list){
+			block.drawDefaultPlanRegion(plan, list);
+		}
+	}
+	Blocks.blastMixer.drawer = extend(DrawBlock, utils.deepCopyToDepth(baseMixer,1));
+	Blocks.pyratiteMixer.drawer = extend(DrawBlock, utils.deepCopyToDepth(baseMixer,1));
+}
+
 function kiln()
 {
 	Blocks.kiln.drawer = extend(DrawBlock,
@@ -177,6 +229,7 @@ module.exports = () =>
     siliconSmelter();
 	siliconCrucible();
 	kiln();
+	mixer();
 	
 	atlas.setupIcon("block","silicon-smelter",Blocks.siliconSmelter.region);
 	atlas.setupIcon("block","kiln",Blocks.kiln.region);

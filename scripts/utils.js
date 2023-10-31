@@ -49,6 +49,30 @@ function deepCopy(obj)
 	return clone;
 }
 
+function deepCopyToDepth(obj,max)
+{
+	var clone = {};
+	if(max<=0){
+		return clone;
+	}
+	for (var i in obj) {
+		if (Array.isArray(obj[i])) {
+			clone[i] = [];
+			for (var z in obj[i]) {
+				if (typeof(obj[i][z]) == "object" && obj[i][z] != null) {
+					clone[i][z] = deepCopyToDepth(obj[i][z],max-1);
+				} else {
+					clone[i][z] = obj[i][z];
+				}
+			}
+		} else if (typeof(obj[i]) == "object" && obj[i] != null)
+			clone[i] = deepCopyToDepth(obj[i],max-1);
+		else
+			clone[i] = obj[i];
+	}
+	return clone;
+}
+
 module.exports = {
 
 readString: (path) =>
@@ -140,6 +164,7 @@ getRegion: (region, tile,sheetw,sheeth) =>
     return nregion;
 },
 
-deepCopy: (b) => deepCopy(b)
+deepCopy: (b) => deepCopy(b),
+deepCopyToDepth: deepCopyToDepth
 
 }
