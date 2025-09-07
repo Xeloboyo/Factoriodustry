@@ -50,11 +50,12 @@ module.exports = () =>
 	var wallBN = tile.initConnectableWall(utils.Load("xelos-pixel-texturepack-connected-shadows-norivet"));
 	
 	utils.eachType(ContentType.block, block=>{
-		if (block instanceof Wall){		
+		if (block instanceof Wall){
+			if (block instanceof Door || block instanceof AutoDoor) return;
 			if (block == Blocks.scrapWall || block == Blocks.scrapWallLarge || block == Blocks.scrapWallHuge){
-				block.buildType = () => extend(Wall.WallBuild, Blocks.scrapWall,utils.deepCopy(wallB));
+				block.buildType = () => extend(Wall.WallBuild, block,utils.deepCopy(wallB));
 			}else{
-				block.buildType = () => extend(Wall.WallBuild, Blocks.scrapWall,utils.deepCopy(wallBN));
+				block.buildType = () => extend(Wall.WallBuild, block,utils.deepCopy(wallBN));
 			}
 		}
 	});
